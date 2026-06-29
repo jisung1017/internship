@@ -2,6 +2,66 @@
 
 이 저장소는 인턴 과제를 진행하고 제출하기 위한 공간입니다. 과제는 폴더 단위로 관리하고, 각 과제 폴더에는 설명 문서와 실행 가능한 코드를 함께 남깁니다.
 
+## 개발 환경 세팅과 실행
+
+이 프로젝트는 Python 3.14와 `uv`를 사용합니다. 처음 받는 사람은 아래 스크립트로 `uv`, Python, 가상환경을 한 번에 준비합니다.
+
+```bash
+scripts/setup-python.sh
+```
+
+스크립트 실행이 끝나면 아래 명령어로 가상환경과 Python 버전을 확인합니다.
+
+```bash
+source .venv/bin/activate
+python --version
+```
+
+기존 `.venv`가 다른 Python 버전으로 만들어져 있으면 아래처럼 재생성합니다.
+
+```bash
+RESET_VENV=1 scripts/setup-python.sh
+```
+
+### 패키지 설치
+
+프로젝트 의존성은 아래 명령어로 동기화합니다. `uv.lock`이 있으면 잠금 파일 기준으로 설치하고, 없으면 `pyproject.toml` 기준으로 `uv.lock`을 생성합니다.
+
+```bash
+uv sync
+```
+
+새 패키지를 추가할 때는 `pip install` 대신 `uv add`를 사용합니다. 예를 들어 `requests`가 필요하면 아래처럼 추가합니다.
+
+```bash
+uv add requests
+```
+
+개발용 패키지는 `--dev` 옵션으로 추가합니다.
+
+```bash
+uv add --dev pytest
+```
+
+패키지를 추가하면 `pyproject.toml`과 `uv.lock`이 함께 갱신됩니다. 과제 제출 시 두 파일을 같이 커밋합니다.
+
+### 과제 실행 방법
+
+가상환경을 활성화하지 않아도 `uv run`으로 과제를 실행할 수 있습니다.
+
+```bash
+uv run python assignments_1/number_baseball.py
+```
+
+가상환경을 활성화한 상태라면 일반 `python` 명령으로도 실행할 수 있습니다.
+
+```bash
+source .venv/bin/activate
+python assignments_1/number_baseball.py
+```
+
+새 과제를 만들면 과제 폴더의 `README.md`에도 실제 실행 명령을 함께 적습니다.
+
 ## 기본 작업 흐름
 
 1. 새 과제를 시작하면 과제별 폴더를 만듭니다.
