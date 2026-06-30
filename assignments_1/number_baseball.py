@@ -1,34 +1,33 @@
 import random
 
 class ConsoleIO:
+    def validate_input(self, input_numbers):
+        # 3개 정수 입력 확인
+        if len(input_numbers) != 3:
+            raise ValueError("3개의 숫자를 입력해야 합니다.")
+        # 1~9 사이의 정수 입력 확인
+        if not all(1 <= x <= 9 for x in input_numbers):
+            raise ValueError("1부터 9 사이의 숫자여야 합니다.")
+        # 중복된 값 확인
+        if len(set(input_numbers)) != 3:
+            raise ValueError("중복된 숫자는 입력할 수 없습니다.")
+
     def get_user_input(self, attempt):
-        while True:
+       while True:
             try:
                 # 사용자 입력
-                print(f"Attmept {attempt}: ", end ="")
+                print(f"Attempt {attempt}: ", end ="")
                 input_numbers = list(map(int, input().split()))
 
-                # 3개 정수 입력 확인
-                if (len(input_numbers) != 3):
-                    print("Input 3 integers.")
-                    continue
+                self.validate_input(input_numbers)
 
-                # 1~9 사이의 정수 입력 확인
-                if not all(1 <= x <= 9 for x in input_numbers) :
-                    print("Input 1~9 integers.")
-                    continue
-
-                # 중복된 값 확인
-                if (len(set(input_numbers)) != 3):
-                    print("Input 3 different integers.")
-                    continue
-                
                 return input_numbers
 
+            
             # 정수 이외 값 예외 처리
-            except ValueError:
-                print("Input 3 different integers.")
-                continue
+            except ValueError as e:
+                print(f"[오류] {e} 다시 입력해주세요.")
+            
                 
     def print_result(self, result):
         # 판정 결과 출력
@@ -51,14 +50,12 @@ class GameDomain:
 
     # 판정 로직
     def decision(self, user_numbers):
-        strike = 0
-        ball = 0
-        
-        for i in range(3):
-            if user_numbers[i] == self.computer_nubmers[i]:
-                strike += 1
-            elif user_numbers[i] in self.computer_nubmers:
-                ball += 1
+        # 스트라이크 계산
+        strike = sum(1 for x, y in zip(self.computer_nubmers, user_numbers) if x == y)
+        # 자리 상관없이 총 맞은 개수
+        total = len(set(self.computer_nubmers) & set(user_numbers))
+        # 총 개수 - 스트라이크 = 볼의 개수
+        ball = total - strike
         
         if strike == 0 and ball == 0:
             return "OUT"
