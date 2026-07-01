@@ -11,7 +11,19 @@ def console():
 def validator():
     return InputValidator()
 
-# 0. 성공 테스트
+# 통합 테스트
+@patch("random.sample", return_value=[1,2,3])
+@patch("builtins.input", return_value="1 2 3")
+def test_game_flow(mock_input, mock_random, capsys):
+
+    main()
+
+    captured = capsys.readouterr()
+
+    assert "3S" in captured.out
+    assert "You Win!" in captured.out
+
+# 0. 올바른 사용자 입력 테스트
 @patch('builtins.input', return_value = "1 2 3")
 def test_get_user_input_valid(mock_input, console):
     result = console.get_user_input(attempt=1)
@@ -85,7 +97,7 @@ def test_decision_logic(computer, user, expected):
 
     assert result == expected
 
-# 8. 실패 테스트 (attempt = 7)
+# 8. 시도횟수 초과 실패 테스트 (attempt = 7)
 @patch('random.sample', return_value = [7,8,9])
 @patch('builtins.input', side_effect = ["1 2 3", "1 2 4", "1 2 5", "1 2 6", "1 2 7", "1 2 8", "1 2 9"])
 def test_game_over_after_7_attempts(mock_input, mock_random, capsys):
@@ -118,3 +130,52 @@ def test_game_input_prompt_print_correct_attempts(mock_input, mock_random, capsy
     assert "Attempt 1: " in captured.out
     assert "Attempt 2: " in captured.out
     assert "Attempt 3: " in captured.out
+
+# 11. decision 함수 자체 검증 테스트 
+@pytest.mark.parametrize("computer,user", [
+    ([1, 2, 3], [1, 2, 3]),
+    ([1, 2, 3], [1, 3, 2]),
+    ([1, 2, 3], [2, 1, 3]),
+    ([1, 2, 3], [4, 5, 6]),
+    ([1, 2, 3], [1, 4, 5]),
+    ([1, 2, 3], [2, 3, 1]),
+    ([4, 5, 6], [6, 5, 4]),
+    ([7, 8, 9], [7, 9, 8]),
+])
+def test_decision_property(computer, user):
+    game = GameDomain(*computer)
+
+    result = game.decision(user)
+
+    # 1. 반환값은 문자열이다.
+    assert isinstance(result, str)
+
+    # 2. OUT이 아니면 S 또는 B를 포함해야 한다.
+    if result != "OUT":
+        assert "S" in result or "B" in result
+
+    # 3. Strike와 Ball의 합은 항상 3 이하이다.
+    strike = 0
+    ball = 0
+
+    for token in result.split():
+        if token.endswith("S"):
+            strike = int(token[:-1])
+        elif token.endswith("B"):
+            ball = int(token[:-1])
+
+    assert strike + ball <= 3
+
+    # 4. Strike는 같은 위치의 숫자 개수와 같다.
+    expected_strike = sum(
+        c == u for c, u in zip(computer, user)
+    )
+    assert strike == expected_strike
+
+    # 5. Ball은 같은 숫자이지만 위치가 다른 개수이다.
+    expected_ball = len(set(computer) & set(user)) - expected_strike
+    assert ball == expected_ball
+
+    # 6. 겹치는 숫자가 하나도 없으면 반드시 OUT이다.
+    if expected_strike == 0 and expected_ball == 0:
+        assert result == "OUT"
