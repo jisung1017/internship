@@ -1,0 +1,6 @@
+.venv/
+.uv-cache/
+.uv-python/
+.python-version.bak
+__pycache__/
+*.py[cod]
