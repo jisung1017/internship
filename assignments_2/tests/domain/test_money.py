@@ -79,3 +79,24 @@ def test_money_is_immutable_after_add():
 
     assert money1 == Money(300)
     assert money2 == Money(500)
+
+def test_money_add_zero():
+    money = Money(5)
+
+    result = money.add(Money(0))
+
+    assert result == Money(5)
+
+def test_money_subtract_zero():
+    money = Money(5)
+
+    result = money.subtract(Money(0))
+
+    assert result == Money(5)
+
+def test_money_multiply_zero():
+    money = Money(5)
+
+    result = money.multiply(0)
+
+    assert result == Money(0)
