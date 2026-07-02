@@ -1,6 +1,7 @@
 import pytest
 
 from src.domain.money import Money
+from src.domain.menu import Menu
 
 def test_creat_menu():
     menu = Menu(
