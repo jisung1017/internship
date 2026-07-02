@@ -4,6 +4,46 @@
 
 ## 개발 환경 세팅과 실행
 
+각 과제는 독립적인 Python 프로젝트입니다.
+
+새 과제를 시작하려면 `assignment-template`을 복사합니다.
+
+```bash
+Copy-Item assignment-template assignments_3 -Recurse
+```
+
+과제 폴더로 이동한 뒤 개발 환경을 준비합니다.
+
+```bash
+cd assignments_3
+
+uv sync
+```
+
+테스트 실행
+```bash
+uv run pytest
+```
+Python 버전 확인 (3.14)
+```bash
+python --version
+```
+
+
+---
+
+```md
+## 저장소 구조
+
+```text
+internship/
+├── assignment-template/
+├── assignments_1/
+├── assignments_2/
+└── README.md
+```
+
+
 이 프로젝트는 Python 3.14와 `uv`를 사용합니다. 처음 받는 사람은 아래 스크립트로 `uv`, Python, 가상환경을 한 번에 준비합니다.
 
 ```bash
@@ -50,7 +90,9 @@ uv add --dev pytest
 가상환경을 활성화하지 않아도 `uv run`으로 과제를 실행할 수 있습니다.
 
 ```bash
-uv run python assignments_1/number_baseball.py
+cd assignments_1
+
+uv run python number_baseball.py
 ```
 
 가상환경을 활성화한 상태라면 일반 `python` 명령으로도 실행할 수 있습니다.
@@ -64,12 +106,11 @@ python assignments_1/number_baseball.py
 
 ## 기본 작업 흐름
 
-1. 새 과제를 시작하면 과제별 폴더를 만듭니다.
-2. 과제 폴더 안에 `README.md`를 작성합니다.
-3. 요구사항을 이해한 뒤 작게 나누어 코드를 작성합니다.
-4. 동작 확인 또는 테스트를 실행합니다.
-5. 변경 내용을 의미 있는 단위로 커밋합니다.
-6. 과제 완료 후 최종 실행 방법과 결과를 `README.md`에 정리합니다.
+1. 새 과제는 템플릿을 복사하여 시작합니다.
+2. 요구사항을 이해한 뒤 작게 나누어 코드를 작성합니다.
+3. 동작 확인 또는 테스트를 실행합니다.
+4. 변경 내용을 의미 있는 단위로 커밋합니다.
+5. 과제 완료 후 최종 실행 방법과 결과를 `README.md`에 정리합니다.
 
 ## 폴더 규칙
 
