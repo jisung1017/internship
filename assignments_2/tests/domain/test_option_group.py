@@ -1,6 +1,9 @@
 import pytest
 
 from src.domain.option_group import OptionGroup
+from src.domain.option import Option
+from src.domain.money import Money
+
 
 def test_create_option_group():
     option_group = OptionGroup(
@@ -9,9 +12,20 @@ def test_create_option_group():
         multiple=False,
     )
 
+    hot = Option(
+        name="HOT",
+        additional_price=Money(0),
+    )
+    
+    ice = Option(
+        name="ICE",
+        additional_price=Money(0)
+    )
+
     assert option_group.name == "온도"
     assert option_group.required is True
     assert option_group.multiple is False
+    assert option_group.options == [hot, ice]
 
 def test_option_group_name_must_be_string():
     with pytest.raises(TypeError):
@@ -45,7 +59,7 @@ def test_option_group_name_is_trimmed():
     )
 
     assert option_group.name == "온도"
-    
+
 def test_required_must_be_boolean():
     with pytest.raises(TypeError):
         OptionGroup(
