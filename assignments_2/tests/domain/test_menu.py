@@ -1,7 +1,9 @@
 import pytest
 
 from src.domain.money import Money
+from src.domain.quantity import Quantity
 from src.domain.menu import Menu
+from src.domain.option_group import OptionGroup
 
 def test_creat_menu():
     menu = Menu(
@@ -52,3 +54,54 @@ def test_menu_price_is_required():
             name = "아메리카노",
         )
     
+def test_create_menu_with_option_groups():
+    temperature = OptionGroup(
+        name="온도",
+        min_quantity=Quantity(1),
+        max_quantity=Quantity(1),
+    )
+    shot = OptionGroup(
+        name="샷",
+        min_quantity=Quantity(0),
+        max_quantity=Quantity(3),
+    )
+    menu = Menu(
+        name="아메리카노",
+        price=Money(3000),
+        option_groups=[temperature, shot],
+    )
+    
+    assert menu.option_groups == [temperature, shot]
+
+def test_option_groups_must_be_list():
+    temperature = OptionGroup(
+        name="온도",
+        min_quantity=Quantity(1),
+        max_quantity=Quantity(1),
+    )
+    shot = OptionGroup(
+        name="샷",
+        min_quantity=Quantity(0),
+        max_quantity=Quantity(3),
+    )
+
+    with pytest.raises(TypeError):
+        Menu(
+            name="아메리카노",
+            price=Money(3000),
+            option_groups=(temperature, shot),
+        )
+        
+def test_option_groups_must_be_option_in_list():
+    shot = OptionGroup(
+        name="샷",
+        min_quantity=Quantity(0),
+        max_quantity=Quantity(3),
+    )
+
+    with pytest.raises(TypeError):
+        Menu(
+            name="아메리카노",
+            price=Money(3000),
+            option_groups=("temperature", shot),
+        )
