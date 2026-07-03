@@ -29,3 +29,6 @@ class Quantity:
             raise ValueError("Quantity는 음수가 될 수 없다.")
 
         return Quantity(result)
+    
+    def is_greater_than(self, other:"Quantity") -> bool:
+        return self.value > other.value
