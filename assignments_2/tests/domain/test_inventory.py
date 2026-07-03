@@ -61,7 +61,7 @@ def test_inventory_consume():
         ]
     )
 
-    inventory.decrease(recipe)
+    inventory.consume(recipe)
 
     assert inventory.items[0].quantity == Quantity(153)
     assert inventory.items[1].quantity == Quantity(2250)
