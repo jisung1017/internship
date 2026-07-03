@@ -116,7 +116,7 @@ def test_cart_item_total_price():
     cart_item = CartItem(
         menu=menu,
         quantity=Quantity(2),
-        selected_options=[shot],
+        selected_options=[shot, syrup],
     )    
 
     assert cart_item.total_price() == Money(7600)
