@@ -95,3 +95,28 @@ def test_selected_options_must_contain_option():
             quantity=Quantity(2),
             selected_options=[shot, "ice"],
         )
+
+def test_cart_item_total_price():
+    shot = Option(
+        name="샷 추가",
+        additional_price=Money(500),
+    )
+
+    syrup = Option(
+        name="헤이즐넛",
+        additional_price=Money(300),
+    )
+
+    menu = Menu(
+        name="아메리카노",
+        price=Money(3000),
+        recipe=create_recipe(),
+    )
+
+    cart_item = CartItem(
+        menu=menu,
+        quantity=Quantity(2),
+        selected_options=[shot],
+    )    
+
+    assert cart_item.total_price() == Money(7600)
