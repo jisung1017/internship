@@ -1,6 +1,7 @@
 from dataclasses import dataclass,field
 
 from src.domain.menu import Menu
+from src.domain.money import Money
 from src.domain.option import Option
 from src.domain.quantity import Quantity
 
@@ -25,3 +26,13 @@ class CartItem:
                 raise TypeError(
                     "CartItem selected_options는 Option 타입으로만 이루어져야 합니다."
                 )
+    
+    def total_price(self) -> Money:
+        option_total = Money(0)
+
+        for option in self.selected_options:
+            option_total = option_total.add(option.additional_price)
+
+        total = self.menu.price.add(option_total)
+
+        return total.multiply(self.quantity)
