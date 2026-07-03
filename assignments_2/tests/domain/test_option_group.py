@@ -6,12 +6,6 @@ from src.domain.money import Money
 
 
 def test_create_option_group():
-    option_group = OptionGroup(
-        name="온도",
-        required=True,
-        multiple=False,
-    )
-
     hot = Option(
         name="HOT",
         additional_price=Money(0),
@@ -20,6 +14,13 @@ def test_create_option_group():
     ice = Option(
         name="ICE",
         additional_price=Money(0)
+    )
+
+    option_group = OptionGroup(
+        name="온도",
+        required=True,
+        multiple=False,
+        options = [hot, ice]
     )
 
     assert option_group.name == "온도"
