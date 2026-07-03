@@ -23,4 +23,9 @@ class OptionGroup:
         if type(self.multiple) is not bool:
             raise TypeError("OptionGroup multiple 은 boolean 형 이여야 합니다.")
 
+        if type(self.options) is not list:
+            raise TypeError("OptionGroup options 는 list 여야 합니다.")
         
+        for option in self.options:
+            if type(option) is not Option:
+                raise TypeError("OptionGroup options 는 Option 타입으로만 이루어져야 합니다.")
