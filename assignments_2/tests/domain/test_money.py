@@ -1,6 +1,7 @@
 import pytest
 
 from src.domain.money import Money
+from src.domain.quantity import Quantity
 
 def test_create_money():
     money = Money(2026)
@@ -47,18 +48,12 @@ def test_money_subtract_negative_result_raises_value_error():
     with pytest.raises(ValueError):
         money1.subtract(money2)
 
-def test_money_multiply():
-    money = Money(1000)
-    
-    result = money.multiply(3)
+def test_multiply_money():
+    money = Money(3000)
 
-    assert result == Money(3000)
+    result = money.multiply(Quantity(2))
 
-def test_money_multiply_negative_result_raises_value_error():
-    money = Money(300)
-
-    with pytest.raises(ValueError):
-        money.multiply(-1)
+    assert result == Money(6000)
 
 def test_money_equal():
     assert Money(1000) == Money(1000)
@@ -97,6 +92,10 @@ def test_money_subtract_zero():
 def test_money_multiply_zero():
     money = Money(5)
 
-    result = money.multiply(0)
+    result = money.multiply(Quantity(0))
 
     assert result == Money(0)
+
+def test_money_multiplier_must_be_quantity():
+    with pytest.raises(TypeError):
+        Money(3000).multiply(2)

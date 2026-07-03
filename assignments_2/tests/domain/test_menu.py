@@ -34,6 +34,8 @@ def test_empty_menu_raises_value_error():
         Menu(
             name= "",
             price = Money(3500),
+            recipe=create_recipe(),
+
         )
 
 def test_blank_menu_raises_value_error():
@@ -41,6 +43,7 @@ def test_blank_menu_raises_value_error():
         Menu(
             name= "   ",
             price = Money(3500),
+            recipe=create_recipe(),
         )
 
 def test_menu_must_be_string():
@@ -83,6 +86,7 @@ def test_create_menu_with_option_groups():
     menu = Menu(
         name="아메리카노",
         price=Money(3000),
+        recipe=create_recipe(),
         option_groups=[temperature, shot],
     )
     

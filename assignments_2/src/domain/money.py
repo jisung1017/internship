@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from src.domain.quantity import Quantity
+
 @dataclass(frozen=True)
 class Money:
     amount: int
@@ -22,10 +24,8 @@ class Money:
         
         return Money(result)
 
-    def multiply(self, multipler:int) -> "Money":
-        result = self.amount * multipler
+    def multiply(self, multiplier: Quantity) -> "Money":
+        if type(multiplier) is not Quantity:
+            raise TypeError("Multiplier는 Quantity 타입이어야 합니다.")
 
-        if result < 0:
-            raise ValueError("Money는 음수가 될 수 없다.")
-
-        return Money(result)
+        return Money(self.amount * multiplier.value)
