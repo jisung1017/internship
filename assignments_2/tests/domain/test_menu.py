@@ -4,13 +4,28 @@ from src.domain.money import Money
 from src.domain.quantity import Quantity
 from src.domain.menu import Menu
 from src.domain.option_group import OptionGroup
+from src.domain.recipe import Recipe
+from src.domain.recipe_item import RecipeItem
+from src.domain.ingredient import Ingredient
+
+def create_recipe():
+    return Recipe(
+        items=[
+            RecipeItem(
+                ingredient=Ingredient("원두"),
+                quantity=Quantity(18),
+            )
+        ]
+    )
 
 def test_creat_menu():
     menu = Menu(
-        name = "아메리카노",
-        price = Money(3500),
+        name="아메리카노",
+        price=Money(3500),
+        recipe=create_recipe(),
     )
 
+    assert menu.recipe == create_recipe()
     assert menu.name == "아메리카노"
     assert menu.price == Money(3500)
 
@@ -89,6 +104,7 @@ def test_option_groups_must_be_list():
         Menu(
             name="아메리카노",
             price=Money(3000),
+            recipe=create_recipe(),
             option_groups=(temperature, shot),
         )
         
@@ -103,5 +119,21 @@ def test_option_groups_must_be_option_in_list():
         Menu(
             name="아메리카노",
             price=Money(3000),
+            recipe=create_recipe(),
             option_groups=("temperature", shot),
+        )
+
+def test_recipe_must_be_recipe():
+    with pytest.raises(TypeError):
+        Menu(
+            name="아메리카노",
+            price=Money(3500),
+            recipe="recipe",
+        )
+
+def test_recipe_is_required():
+    with pytest.raises(TypeError):
+        Menu(
+            name="아메리카노",
+            price=Money(3500),
         )
