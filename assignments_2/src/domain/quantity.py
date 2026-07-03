@@ -32,3 +32,4 @@ class Quantity:
     
     def is_greater_than(self, other:"Quantity") -> bool:
         return self.value > other.value
+    
