@@ -99,14 +99,6 @@ class TestPaymentBehavior:
 
         assert payment.balance == Money(40000)
 
-    def test_pay_multiple_orders(self, order):
-        payment = Payment(balance=Money(50000))
-
-        payment.pay(order)
-        payment.pay(order)
-
-        assert payment.balance == Money(30000)
-
     def test_pay_exact_balance(self, exact_balance_order):
         payment = Payment(balance=Money(10000))
 
@@ -133,6 +125,14 @@ class TestPaymentValidation:
 
     def test_pay_insufficient_balance_raises_value_error(self, order):
         payment = Payment(balance=Money(5000))
+
+        with pytest.raises(ValueError):
+            payment.pay(order)
+            
+    def test_pay_only_once(self, order):
+        payment = Payment(balance=Money(50000))
+
+        payment.pay(order)
 
         with pytest.raises(ValueError):
             payment.pay(order)
