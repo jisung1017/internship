@@ -8,7 +8,7 @@ class Cart:
 
     def add_item(self, item: CartItem) -> None:
         if not isinstance(item, CartItem):
-            raise TypeError("item must be a CartItem")
+            raise TypeError("item 은 CartItem 이여야 한다.")
 
         self.items.append(item)
 
