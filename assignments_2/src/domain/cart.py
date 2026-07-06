@@ -19,3 +19,6 @@ class Cart:
             total = total.add(item.total_price())
 
         return total
+    
+    def clear(self) -> None:
+        self.items.clear()
