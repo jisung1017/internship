@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from src.domain.ingredient import Ingredient
 from src.domain.inventory_item import InventoryItem
 from src.domain.recipe import Recipe
+from src.domain.exceptions import OutOfStockError
 
 @dataclass
 class Inventory:
@@ -28,7 +29,7 @@ class Inventory:
             if item.ingredient == ingredient:
                 return item
             
-        raise ValueError(f"{ingredient.name}의 재고가 존재하지 않습니다.")
+        raise OutOfStockError()
 
     def consume(self, recipe: Recipe) -> None:
         for recipe_item in recipe.items:

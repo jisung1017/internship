@@ -6,7 +6,7 @@ from src.domain.ingredient import Ingredient
 from src.domain.inventory_item import InventoryItem
 from src.domain.recipe import Recipe
 from src.domain.recipe_item import RecipeItem
-
+from src.domain.exceptions import OutOfStockError
 
 def test_create_inventory():
     bean = Ingredient("원두")
@@ -83,5 +83,5 @@ def test_consume_recipe_with_missing_ingredient_raises_value_error():
         ]
     )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(OutOfStockError):
         inventory.consume(recipe)
