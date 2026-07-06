@@ -50,7 +50,7 @@ class TestCartCreation:
         assert cart.items == []
 
 
-class TestCartAddition:
+class TestCartBehavior:
 
     def test_add_cart_item(self):
         cart = Cart()
@@ -83,6 +83,28 @@ class TestCartAddition:
         cart.add_item(latte)
 
         assert cart.total_price() == Money(10000)
+    
+    def test_clear_removes_all_items(self):
+        cart = Cart()
+
+        americano = create_cart_item(
+            name="아메리카노",
+            price=3000,
+            quantity=2,
+        )
+
+        latte = create_cart_item(
+            name="카페라떼",
+            price=4000,
+            quantity=1,
+        )
+
+        cart.add_item(americano)
+        cart.add_item(latte)
+
+        cart.clear()
+
+        assert len(cart.items) == 0
 
 
 class TestCartValidation:
@@ -92,3 +114,25 @@ class TestCartValidation:
 
         with pytest.raises(TypeError):
             cart.add_item("americano")
+
+    def test_clear_empty_cart_does_not_raise(self):
+        cart = Cart()
+
+        cart.clear()
+
+        assert cart.total_price() == Money(0)
+
+    def test_clear_can_be_called_multiple_times(self):
+        cart = Cart()
+
+        americano = create_cart_item(
+            name="아메리카노",
+            price=3000,
+            quantity=2,
+        )
+        cart.add_item(americano)
+
+        cart.clear()
+        cart.clear()
+
+        assert cart.total_price() == Money(0)
