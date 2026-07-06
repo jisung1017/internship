@@ -6,13 +6,13 @@ from src.domain.money import Money
 class Order:
     def __init__(self, items: list[CartItem]):
         if not isinstance(items, list):
-            raise TypeError("items must be a list")
+            raise TypeError("items 은 list 형 입니다.")
 
         if not items:
-            raise ValueError("Order must contain at least one CartItem")
+            raise ValueError("Order 는 적어도 하나의 CartItem 이 있어야합니다.")
 
         if not all(isinstance(item, CartItem) for item in items):
-            raise TypeError("items must contain only CartItem")
+            raise TypeError("items 는 오로지 CartItem 로만 이루어져있습니다.")
 
         # Cart와 리스트를 공유하지 않도록 복사
         self.items = items.copy()
