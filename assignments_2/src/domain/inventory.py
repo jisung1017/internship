@@ -35,3 +35,16 @@ class Inventory:
         for recipe_item in recipe.items:
             item = self._find_item(recipe_item.ingredient)
             item.decrease(recipe_item.quantity)
+    
+    def can_consume(self, recipe: Recipe) -> bool:
+        try:
+            for recipe_item in recipe.items:
+                item = self._find_item(recipe_item.ingredient)
+
+                if recipe_item.quantity.is_greater_than(item.quantity):
+                    return False
+        
+        except OutOfStockError:
+            return False
+        
+        return True
