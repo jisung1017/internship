@@ -11,6 +11,8 @@ from src.domain.payment import Payment
 from src.domain.quantity import Quantity
 from src.domain.recipe import Recipe
 from src.domain.recipe_item import RecipeItem
+from src.domain.exceptions import InsufficientBalanceError
+
 
 
 def create_menu(name: str, price: int) -> Menu:
@@ -126,7 +128,7 @@ class TestPaymentValidation:
     def test_pay_insufficient_balance_raises_value_error(self, order):
         payment = Payment(balance=Money(5000))
 
-        with pytest.raises(ValueError):
+        with pytest.raises(InsufficientBalanceError):
             payment.pay(order)
             
     def test_pay_only_once(self, order):
