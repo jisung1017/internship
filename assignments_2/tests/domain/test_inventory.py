@@ -19,6 +19,7 @@ def create_inventory() -> Inventory:
 
 
 class TestInventoryValidation:
+
     def test_create_inventory(self):
         inventory = create_inventory()
 
@@ -49,6 +50,7 @@ class TestInventoryValidation:
 
 
 class TestInventoryBehavior:
+    
     def test_consume_recipe(self):
         inventory = create_inventory()
 
@@ -86,6 +88,7 @@ class TestInventoryBehavior:
 
 
 class TestInventoryCanConsume:
+
     def test_can_consume_returns_true_when_quantity_equals_required(self):
         inventory = Inventory(
             items=[
