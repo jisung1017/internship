@@ -6,8 +6,9 @@ from src.domain.quantity import Quantity
 @dataclass
 class OptionGroup:
     name: str
-    min_quantity: Quantity
-    max_quantity: Quantity
+
+    min_quantity: Quantity = field(default_factory=lambda: Quantity(1))
+    max_quantity: Quantity = field(default_factory=lambda: Quantity(1))
     options: list[Option] = field(default_factory=list)
 
     def __post_init__(self):
