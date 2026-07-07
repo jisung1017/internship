@@ -7,6 +7,10 @@ from src.domain.inventory import Inventory, InventoryItem
 from src.domain.ingredient import Ingredient
 from src.domain.quantity import Quantity
 from src.application.order_service import OrderService
+from src.domain.cart import Cart, CartItem
+from src.domain.menu import Menu
+from src.domain.recipe import Recipe, RecipeItem
+from src.domain.option import Option
 
 def create_enough_payment(balance: int = 10000) -> Payment:
     return Payment(balance=Money(balance))
@@ -16,6 +20,49 @@ def create_poor_payment(balance: int = 100) -> Payment:
 
 def create_inventory_with_bean(quantity: int) -> Inventory:
     return Inventory(items=[InventoryItem(Ingredient("원두"), Quantity(quantity))])
+
+def create_menu(name: str, price: int) -> Menu:
+    recipe = Recipe(
+        items=[
+            RecipeItem(
+                ingredient=Ingredient("원두"),
+                quantity=Quantity(18),
+            )
+        ]
+    )
+
+    return Menu(
+        name=name,
+        price=Money(price),
+        recipe=recipe,
+        option_groups=[],
+    )
+
+
+def create_cart_item(
+    name: str,
+    price: int,
+    quantity: int,
+    selected_options: list[Option] | None = None,
+) -> CartItem:
+    return CartItem(
+        menu=create_menu(name, price),
+        quantity=Quantity(quantity),
+        selected_options=selected_options or [],
+    )
+
+@pytest.fixture
+def americano_cart() -> Cart:
+        cart = Cart()
+        item = create_cart_item(
+            name="아메리카노",
+            price=3000,
+            quantity=1,
+        )
+
+        cart.add_item(item)
+
+        return cart
 
 
 class TestOrderServiceValidation:
