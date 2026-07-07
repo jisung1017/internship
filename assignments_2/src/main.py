@@ -1,12 +1,12 @@
 from src.domain.money import Money
 from src.domain.payment import Payment
 from src.interface.cli import CLI
+from src.environment.menus import create_menus
 
 budget = 10_000
 
 def main():
-    menus = [
-    ]
+    menus = create_menus()
 
 
     payment = Payment(Money(budget))
