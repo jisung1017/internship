@@ -83,7 +83,7 @@ class TestMoneyComparison:
         (Money(1000), Money(1000), True),
         (Money(2000), Money(1000), False),
     ])
-    def test_less_than(self, left, right, expected):
+    def test_less_and_equal_than(self, left, right, expected):
         assert (left <= right) is expected
 
     @pytest.mark.parametrize("left, right, expected", [
@@ -91,7 +91,7 @@ class TestMoneyComparison:
         (Money(1000), Money(1000), True),
         (Money(2000), Money(1000), True),
     ])
-    def test_greater_than(self, left, right, expected):
+    def test_greater_and_equal_than(self, left, right, expected):
         assert (left >= right) is expected
 
 class TestMoneyImmutability:
