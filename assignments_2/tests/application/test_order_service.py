@@ -57,7 +57,7 @@ def americano_cart() -> Cart:
         item = create_cart_item(
             name="아메리카노",
             price=3000,
-            quantity=1,
+            quantity=2,
         )
 
         cart.add_item(item)
@@ -92,6 +92,17 @@ class TestOrderServiceValidation:
         with pytest.raises(InsufficientBalanceError):
             service.checkout(americano_cart)   
 
+        assert len(americano_cart) == 0
+
+    def test_checkout_boundary_payment_and_inventory(self, americano_cart):
+        payment = create_enough_payment(6000)
+        inventory = create_inventory_with_bean(36)
+        service = OrderService(payment, inventory)
+
+        service.checkout(americano_cart)
+
+        assert payment.balance == Money(0)
+        assert inventory.items[0].quantity == Quantity(0)
         assert len(americano_cart) == 0
 
 
