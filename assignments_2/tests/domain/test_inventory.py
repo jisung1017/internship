@@ -59,7 +59,7 @@ class TestInventoryBehavior:
             ]
         )
 
-        inventory.consume(recipe)
+        inventory.consume(recipe, Quantity(1))
 
         assert inventory.items[0].quantity == Quantity(153)
         assert inventory.items[1].quantity == Quantity(2250)
@@ -82,14 +82,14 @@ class TestInventoryBehavior:
         )
 
         with pytest.raises(OutOfStockError):
-            inventory.consume(recipe)
+            inventory.consume(recipe, Quantity(1))
 
 
 class TestInventoryCanConsume:
     def test_can_consume_returns_true_when_quantity_equals_required(self):
         inventory = Inventory(
             items=[
-                InventoryItem(Ingredient("원두"), Quantity(17)),
+                InventoryItem(Ingredient("원두"), Quantity(34)),
             ]
         )
 
@@ -99,7 +99,7 @@ class TestInventoryCanConsume:
             ]
         )
 
-        assert inventory.can_consume(recipe) is True
+        assert inventory.can_consume(recipe, Quantity(2)) is True
 
     def test_can_consume_returns_true_when_inventory_is_sufficient(self):
         inventory = create_inventory()
@@ -111,7 +111,7 @@ class TestInventoryCanConsume:
             ]
         )
 
-        assert inventory.can_consume(recipe) is True
+        assert inventory.can_consume(recipe, Quantity(2)) is True
 
     def test_can_consume_returns_false_when_inventory_is_insufficient(self):
         inventory = Inventory(
@@ -126,7 +126,7 @@ class TestInventoryCanConsume:
             ]
         )
 
-        assert inventory.can_consume(recipe) is False
+        assert inventory.can_consume(recipe, Quantity(2)) is False
 
     def test_can_consume_returns_false_when_ingredient_is_missing(self):
         inventory = Inventory(
@@ -141,4 +141,4 @@ class TestInventoryCanConsume:
             ]
         )
 
-        assert inventory.can_consume(recipe) is False
+        assert inventory.can_consume(recipe, Quantity(2)) is False

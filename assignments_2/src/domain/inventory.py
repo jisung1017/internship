@@ -4,6 +4,7 @@ from src.domain.ingredient import Ingredient
 from src.domain.inventory_item import InventoryItem
 from src.domain.recipe import Recipe
 from src.domain.exceptions import OutOfStockError
+from src.domain.quantity import Quantity
 
 @dataclass
 class Inventory:
@@ -31,17 +32,19 @@ class Inventory:
             
         raise OutOfStockError()
 
-    def consume(self, recipe: Recipe) -> None:
+    def consume(self, recipe: Recipe, menu_quantity: Quantity) -> None:
         for recipe_item in recipe.items:
             item = self._find_item(recipe_item.ingredient)
-            item.decrease(recipe_item.quantity)
+
+            item.decrease(recipe_item.quantity.multiply(menu_quantity))
     
-    def can_consume(self, recipe: Recipe) -> bool:
+    def can_consume(self, recipe: Recipe, menu_quantity: Quantity) -> bool:
         try:
             for recipe_item in recipe.items:
                 item = self._find_item(recipe_item.ingredient)
+                required_quantity = recipe_item.quantity.multiply(menu_quantity)
 
-                if recipe_item.quantity.is_greater_than(item.quantity):
+                if required_quantity.is_greater_than(item.quantity):
                     return False
         
         except OutOfStockError:
