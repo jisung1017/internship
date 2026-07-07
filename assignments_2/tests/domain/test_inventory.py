@@ -145,3 +145,60 @@ class TestInventoryCanConsume:
         )
 
         assert inventory.can_consume(recipe, Quantity(2)) is False
+
+
+class TestInventoryCanConsumeAll:
+
+    def test_can_consume_all_returns_false_when_shared_ingredient_insufficient(self):
+        inventory = Inventory(
+            items=[InventoryItem(Ingredient("원두"), Quantity(50))]
+        )
+
+        recipe = Recipe(items=[RecipeItem(Ingredient("원두"), Quantity(18))])
+
+        requirements = [(recipe, Quantity(2)), (recipe, Quantity(1))]
+
+        # 총 50개 - 합산 54개 -> False
+        assert inventory.can_consume_all(requirements) is False
+
+    def test_can_consume_all_returns_true_when_sufficient(self):
+        inventory = Inventory(
+            items=[InventoryItem(Ingredient("원두"), Quantity(100))]
+        )
+
+        recipe = Recipe(items=[RecipeItem(Ingredient("원두"), Quantity(18))])
+
+        requirements = [(recipe, Quantity(2)), (recipe, Quantity(1))]
+
+        # 총 50개 - 합산 54개 -> True
+        assert inventory.can_consume_all(requirements) is True
+
+
+class TestInventoryConsumeAll:
+
+    def test_consume_all_decreases_shared_ingredient_correctly(self):
+        inventory = Inventory(
+            items=[InventoryItem(Ingredient("원두"), Quantity(100))]
+        )
+
+        americano_recipe = Recipe(items=[RecipeItem(Ingredient("원두"), Quantity(18))])
+        latte_recipe = Recipe(items=[RecipeItem(Ingredient("원두"), Quantity(18))])
+
+        requirements = [
+            (americano_recipe, Quantity(2)),
+            (latte_recipe, Quantity(1)),
+        ]
+
+        inventory.consume_all(requirements)
+
+        assert inventory.items[0].quantity == Quantity(46)  # 100 - 54
+
+    def test_consume_all_raises_out_of_stock_when_missing_ingredient(self):
+        inventory = Inventory(
+            items=[InventoryItem(Ingredient("원두"), Quantity(100))]
+        )
+
+        recipe = Recipe(items=[RecipeItem(Ingredient("우유"), Quantity(200))])
+
+        with pytest.raises(OutOfStockError):
+            inventory.consume_all([(recipe, Quantity(1))])
