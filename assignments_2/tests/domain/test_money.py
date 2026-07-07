@@ -55,32 +55,44 @@ class TestMoneyBehavior:
 
 class TestMoneyComparison:
 
-    def test_equal(self):
-        assert Money(1000) == Money(1000)
+    @pytest.mark.parametrize("left, right, expected", [
+        (Money(1000), Money(1000), True),
+        (Money(1000), Money(3000), False),
+    ])
+    def test_equality(self, left, right, expected):
+        assert (left == right) is expected
 
-    def test_not_equal(self):
-        assert Money(1000) != Money(3000)
+    @pytest.mark.parametrize("left, right, expected", [
+        (Money(1000), Money(2000), True),
+        (Money(1000), Money(1000), False),
+        (Money(2000), Money(1000), False),
+    ])
+    def test_less_than(self, left, right, expected):
+        assert (left < right) is expected
 
-    def test_less_than(self):
-        assert Money(1000) < Money(2000)
+    @pytest.mark.parametrize("left, right, expected", [
+        (Money(1000), Money(2000), False),
+        (Money(1000), Money(1000), False),
+        (Money(2000), Money(1000), True),
+    ])
+    def test_greater_than(self, left, right, expected):
+        assert (left > right) is expected
 
-    def test_less_than_or_equal(self):
-        assert Money(1000) <= Money(1000)
-        assert Money(1000) <= Money(2000)
+    @pytest.mark.parametrize("left, right, expected", [
+        (Money(1000), Money(2000), True),
+        (Money(1000), Money(1000), True),
+        (Money(2000), Money(1000), False),
+    ])
+    def test_less_than(self, left, right, expected):
+        assert (left <= right) is expected
 
-    def test_greater_than(self):
-        assert Money(3000) > Money(2000)
-
-    def test_greater_than_or_equal(self):
-        assert Money(3000) >= Money(3000)
-        assert Money(3000) >= Money(2000)
-
-    def test_equal_values_are_not_less_than(self):
-        assert not Money(1000) < Money(1000)
-
-    def test_equal_values_are_not_greater_than(self):
-        assert not Money(1000) > Money(1000)
-
+    @pytest.mark.parametrize("left, right, expected", [
+        (Money(1000), Money(2000), False),
+        (Money(1000), Money(1000), True),
+        (Money(2000), Money(1000), True),
+    ])
+    def test_greater_than(self, left, right, expected):
+        assert (left >= right) is expected
 
 class TestMoneyImmutability:
 
