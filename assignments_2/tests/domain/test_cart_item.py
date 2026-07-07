@@ -9,114 +9,66 @@ from src.domain.quantity import Quantity
 from src.domain.recipe import Recipe
 from src.domain.recipe_item import RecipeItem
 
-def create_recipe():
-    return Recipe(
-        items=[
-            RecipeItem(
-                ingredient=Ingredient("원두"),
-                quantity=Quantity(18),
+
+def create_recipe() -> Recipe:
+    return Recipe(items=[RecipeItem(Ingredient("원두"), Quantity(18))])
+
+def make_menu(
+        name:str = "아메리카노",
+        price:int = 3000
+) -> Menu:
+    return Menu(name=name, price=Money(price), recipe=create_recipe())
+
+def make_option(
+        name:str = "옵션",
+        price:int = 500
+) -> Option:
+    return Option(name=name, additional_price=Money(price))
+
+
+class TestCartItemValidation:
+
+    def test_menu_must_be_menu(self):
+        with pytest.raises(TypeError):
+            CartItem(
+                menu="아메리카노",
+                quantity=Quantity(2),
+                selected_options=[],
             )
-        ]
-    )
 
-def test_create_cart_item():
-    shot = Option(
-        name="샷 추가",
-        additional_price=Money(500),
-    )
+    def test_quantity_must_be_quantity(self):
+        with pytest.raises(TypeError):
+            CartItem(
+                menu=make_menu(),
+                quantity=2,
+                selected_options=[],
+            )
 
-    menu = Menu(
-        name="아메리카노",
-        price=Money(3000),
-        recipe=create_recipe(),
-    )
+    def test_selected_options_must_be_list(self):
+        with pytest.raises(TypeError):
+            CartItem(
+                menu=make_menu(),
+                quantity=Quantity(2),
+                selected_options=(),
+            )
 
-    cart_item = CartItem(
-        menu=menu,
-        quantity=Quantity(2),
-        selected_options=[shot],
-    )
+    def test_selected_options_must_contain_option(self):
+        with pytest.raises(TypeError):
+            CartItem(
+                menu=make_menu,
+                quantity=Quantity(2),
+                selected_options=[make_option(), "ice"],
+            )
 
-    assert cart_item.menu == menu
-    assert cart_item.quantity == Quantity(2)
-    assert cart_item.selected_options == [shot]
+    def test_cart_item_total_price(self):
+        menu = make_menu(price=3000)
+        shot = make_option(price=500)
+        syrup = make_option(price=300)
 
-def test_menu_must_be_menu():
-    with pytest.raises(TypeError):
-        CartItem(
-            menu="아메리카노",
-            quantity=Quantity(2),
-            selected_options=[],
-        )
-
-def test_quantity_must_be_quantity():
-    menu = Menu(
-        name="아메리카노",
-        price=Money(3000),
-        recipe=create_recipe(),
-    )
-
-    with pytest.raises(TypeError):
-        CartItem(
-            menu=menu,
-            quantity=2,
-            selected_options=[],
-        )
-
-def test_selected_options_must_be_list():
-    menu = Menu(
-        name="아메리카노",
-        price=Money(3000),
-        recipe=create_recipe(),
-    )
-
-    with pytest.raises(TypeError):
-        CartItem(
+        cart_item = CartItem(
             menu=menu,
             quantity=Quantity(2),
-            selected_options=(),
-        )
+            selected_options=[shot, syrup],
+        )    
 
-def test_selected_options_must_contain_option():
-    menu = Menu(
-        name="아메리카노",
-        price=Money(3000),
-        recipe=create_recipe(),
-    )
-
-    shot = Option(
-        name="샷 추가",
-        additional_price=Money(500),
-    )
-
-    with pytest.raises(TypeError):
-        CartItem(
-            menu=menu,
-            quantity=Quantity(2),
-            selected_options=[shot, "ice"],
-        )
-
-def test_cart_item_total_price():
-    shot = Option(
-        name="샷 추가",
-        additional_price=Money(500),
-    )
-
-    syrup = Option(
-        name="헤이즐넛",
-        additional_price=Money(300),
-    )
-
-    menu = Menu(
-        name="아메리카노",
-        price=Money(3000),
-        recipe=create_recipe(),
-    )
-
-    cart_item = CartItem(
-        menu=menu,
-        quantity=Quantity(2),
-        selected_options=[shot, syrup],
-    )    
-
-    assert cart_item.total_price() == Money(7600)
+        assert cart_item.total_price() == Money(7600)
