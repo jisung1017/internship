@@ -20,7 +20,7 @@ class CLI:
                 if 0 <= menu < len(self.menu) + 1:
                     return menu
                 
-                print("잘못된 메뉴입니다.")
+                print("잘못된 입력입니다. 다시 입력해주세요.")
             
             except ValueError:
                 print("숫자를 입력해주세요.")

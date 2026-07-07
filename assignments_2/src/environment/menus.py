@@ -13,7 +13,7 @@ def create_menu() -> list[Menu]:
 
     americano = Menu(
         name="아메리카노",
-        price=Money(3000)
+        price=Money(3000),
         recipe=Recipe(
             items=[
                 RecipeItem(bean, Quantity(18)),
@@ -21,7 +21,9 @@ def create_menu() -> list[Menu]:
                 RecipeItem(cup, Quantity(1)),
             ]
         ),
-        option_groups=[],
+        option_groups=[
+            
+        ],
     )
 
     latte = Menu(
@@ -52,7 +54,7 @@ def create_menu() -> list[Menu]:
 
     cappuccino = Menu(
         name="카푸치노",
-        price=Money(4500)
+        price=Money(4500),
         recipe=Recipe(
             items=[
                 RecipeItem(bean,Quantity(10)),
