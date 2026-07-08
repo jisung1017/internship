@@ -91,7 +91,7 @@ def create_menu() -> list[Menu]:
     )
 
     caramel_macchiato = Menu(
-        name="카라멜 마키아토",
+        name="카라멜마키아토",
         price=Money(5500),
         recipe=Recipe(
             items=[
