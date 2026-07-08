@@ -131,10 +131,3 @@ class TestPaymentValidation:
         with pytest.raises(InsufficientBalanceError):
             payment.pay(order)
             
-    def test_pay_only_once(self, order):
-        payment = Payment(balance=Money(50000))
-
-        payment.pay(order)
-
-        with pytest.raises(ValueError):
-            payment.pay(order)

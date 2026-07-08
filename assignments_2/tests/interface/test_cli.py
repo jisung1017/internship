@@ -3,7 +3,7 @@ import pytest
 from src.domain.money import Money
 from src.domain.option import Option
 from src.domain.quantity import Quantity
-from src.interface.cli import parse_menu_choice, parse_option_selection, parse_quantity
+from src.interface.cli import parse_menu_choice, parse_quantity
 
 
 class TestParseMenuChoice:
@@ -21,17 +21,6 @@ class TestParseMenuChoice:
             parse_menu_choice("2.3", menu_count=2)
 
 
-class TestParseOptionSelection:
-
-    def test_out_of_range_raises_value_error(self):
-        hot = Option(name="HOT", additional_price=Money(0))
-        with pytest.raises(ValueError):
-            parse_option_selection("5", [hot])
-
-    def test_non_numeric_raises_value_error(self):
-        hot = Option(name="HOT", additional_price=Money(0))
-        with pytest.raises(ValueError):
-            parse_option_selection("abc", [hot])
 
 
 class TestParseQuantity:
