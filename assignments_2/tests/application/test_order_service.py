@@ -106,6 +106,37 @@ class TestOrderServiceValidation:
         assert len(americano_cart) == 0
 
 
+class TestOrderServiceAddToCart:
+
+    def test_add_to_cart_appends_valid_item(self):
+        cart = Cart()
+        payment = create_enough_payment()
+        inventory = create_inventory_with_bean(quantity=100)
+        service = OrderService(payment, inventory)
+
+        menu = create_menu_with_shot_option()
+        shot_option = menu.option_groups[0].options[0]
+
+        service.add_to_cart(cart, menu, Quantity(1), [shot_option])
+
+        assert len(cart) == 1
+        assert cart.items[0].menu == menu
+        assert cart.items[0].selected_options == [shot_option]
+
+    def test_add_to_cart_raises_when_option_invalid_and_does_not_add_item(self):
+        cart = Cart()
+        payment = create_enough_payment()
+        inventory = create_inventory_with_bean(quantity=100)
+        service = OrderService(payment, inventory)
+
+        menu = create_menu_with_shot_option()
+        invalid_option = Option(name="시럽 추가", additional_price=Money(300))
+
+        with pytest.raises(ValueError):
+            service.add_to_cart(cart, menu, Quantity(1), [invalid_option])
+
+        assert len(cart) == 0
+
 class TestOrderServiceAtomicity:
     
     def test_checkout_does_not_charge_when_is_out_of_stock(self, americano_cart):
