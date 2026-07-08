@@ -108,7 +108,7 @@ class TestMenuValidation:
                 recipe=create_recipe,
             )
         
-    def test_option_groups_must_be_list(tself, create_recipe, temperature_group, shot_group):
+    def test_option_groups_must_be_list(self, create_recipe, temperature_group, shot_group):
         with pytest.raises(TypeError):
             Menu(
                 name="아메리카노",
@@ -141,7 +141,14 @@ class TestMenuValidation:
                 price=Money(3500),
             )
 
+
 class TestMenuOptionValidation:
+
+    def test_validate_passes_with_valid_selection(self, americano, hot_option):
+        americano.validate_selected_options([hot_option])
+
+    def test_validate_passes_with_repeated_option(self, americano, hot_option, shot_option):
+        americano.validate_selected_options([hot_option, shot_option, shot_option])
 
     def test_validate_raises_when_required_group_not_selected(self, americano):
         with pytest.raises(ValueError):
