@@ -3,6 +3,7 @@ from src.domain.payment import Payment
 from src.domain.inventory import Inventory
 from src.domain.order import Order
 from src.domain.cart import Cart
+from src.domain.exceptions import InsufficientBalanceError
 
 class OrderService:
     def __init__(
@@ -15,27 +16,19 @@ class OrderService:
 
     def checkout(self, cart: Cart) -> Order:
         order = Order.from_cart(cart)
+        requirements = [(item.menu.recipe, item.quantity) for item in order.items]
+
+        if not self.inventory.can_consume_all(requirements):
+            cart.clear()
+            raise OutOfStockError()
 
         try:
-            # 1. 재고 확인
-            for item in order.items:
-                if not self.inventory.can_consume(
-                    item.menu.recipe,
-                    item.quantity
-                ):
-                    raise OutOfStockError()
-            
-            # 2. 결제
             self.payment.pay(order)
-            
-            # 3. 재고 차감
-            for item in order.items:
-                self.inventory.consume(
-                    item.menu.recipe,
-                    item.quantity
-                )
-
-            return order
-        
-        finally:
+        except InsufficientBalanceError:
             cart.clear()
+            raise
+
+        self.inventory.consume_all(requirements)
+        cart.clear()
+
+        return order
