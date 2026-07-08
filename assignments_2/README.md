@@ -60,6 +60,7 @@ uv run pytest
 
 ## 실행 화면
 
+```text
 =========== Cafe Mini Kiosk ===========
 
                 [MENU]
@@ -171,6 +172,7 @@ uv run pytest
 0. 종료
 >> 메뉴 선택: 0
 종료합니다.
+```
 
 ## 구현 내용
 
