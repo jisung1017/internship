@@ -11,6 +11,7 @@ from src.domain.cart import Cart, CartItem
 from src.domain.menu import Menu
 from src.domain.recipe import Recipe, RecipeItem
 from src.domain.option import Option
+from src.domain.option_group import OptionGroup
 
 def create_enough_payment(balance: int = 10000) -> Payment:
     return Payment(balance=Money(balance))
@@ -38,6 +39,30 @@ def create_menu(name: str, price: int) -> Menu:
         option_groups=[],
     )
 
+def create_menu_with_shot_option() -> Menu:
+    recipe = Recipe(
+        items=[
+            RecipeItem(
+                ingredient=Ingredient("원두"),
+                quantity=Quantity(18),
+            )
+        ]
+    )
+
+    shot_option = Option(name="샷 추가", additional_price=Money(500))
+    shot_group = OptionGroup(
+        name="샷",
+        min_quantity=Quantity(0),
+        max_quantity=Quantity(3),
+        options=[shot_option],
+    )
+
+    return Menu(
+        name="아메리카노",
+        price=Money(3000),
+        recipe=recipe,
+        option_groups=[shot_group],
+    )
 
 def create_cart_item(
     name: str,
