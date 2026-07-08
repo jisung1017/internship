@@ -10,5 +10,6 @@ def create_inventory() -> Inventory:
             InventoryItem(Ingredient("물"), Quantity(5000)),
             InventoryItem(Ingredient("우유"), Quantity(3000)),
             InventoryItem(Ingredient("컵"), Quantity(100)),
+            InventoryItem(Ingredient("시럽"), Quantity(1000))
         ]
     )

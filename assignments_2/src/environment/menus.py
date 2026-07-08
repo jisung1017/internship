@@ -4,12 +4,39 @@ from src.domain.money import Money
 from src.domain.quantity import Quantity
 from src.domain.recipe import Recipe
 from src.domain.recipe_item import RecipeItem
+from src.domain.option_group import OptionGroup
+from src.domain.option import Option
 
 def create_menu() -> list[Menu]:
     bean = Ingredient("원두")
     water = Ingredient("물")
     milk = Ingredient("우유")
     cup = Ingredient("컵")
+    syrup = Ingredient("시럽")
+
+    temperature_group = OptionGroup(
+        name="온도",
+        min_quantity=Quantity(1),
+        max_quantity=Quantity(1),
+        options=[
+            Option(name="HOT", additional_price=Money(0)),
+            Option(name="ICE", additional_price=Money(0)),
+        ],
+    )
+
+    shot_group = OptionGroup(
+        name="샷추가",
+        min_quantity=Quantity(0),
+        max_quantity=Quantity(4),
+        options=[Option(name="샷추가", additional_price=Money(500))],
+    )
+
+    syrup_group = OptionGroup(
+        name="시럽추가",
+        min_quantity=Quantity(0),
+        max_quantity=Quantity(2),
+        options=[Option(name="시럽추가", additional_price=Money(200))]
+    )
 
     americano = Menu(
         name="아메리카노",
@@ -21,9 +48,7 @@ def create_menu() -> list[Menu]:
                 RecipeItem(cup, Quantity(1)),
             ]
         ),
-        option_groups=[
-            
-        ],
+        option_groups=[temperature_group, shot_group, syrup_group],
     )
 
     latte = Menu(
@@ -37,7 +62,7 @@ def create_menu() -> list[Menu]:
                 RecipeItem(cup, Quantity(1)),
             ]
         ),
-        option_groups=[],
+        option_groups=[temperature_group, shot_group, syrup_group],
     )
 
     espresso = Menu(
@@ -49,7 +74,7 @@ def create_menu() -> list[Menu]:
                 RecipeItem(cup, Quantity(1)),
             ]
         ),
-        option_groups=[],
+        option_groups=[shot_group],
     )
 
     cappuccino = Menu(
@@ -62,7 +87,21 @@ def create_menu() -> list[Menu]:
                 RecipeItem(cup, Quantity(1)),
             ]
         ),
-        option_groups=[],
+        option_groups=[shot_group, syrup_group],
     )
 
-    return [americano, latte, espresso, cappuccino]
+    caramel_macchiato = Menu(
+        name="카라멜 마키아토",
+        price=Money(5500),
+        recipe=Recipe(
+            items=[
+                RecipeItem(bean, Quantity(10)),
+                RecipeItem(milk, Quantity(30)),
+                RecipeItem(cup, Quantity(1)),
+                RecipeItem(syrup, Quantity(10)),
+            ]
+        ),
+        option_groups=[temperature_group, shot_group, syrup_group],
+    )
+
+    return [americano, latte, espresso, cappuccino, caramel_macchiato]
