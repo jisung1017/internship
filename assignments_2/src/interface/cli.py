@@ -1,7 +1,10 @@
+import time
+
 from src.domain.cart import Cart
 from src.domain.exceptions import InsufficientBalanceError, OutOfStockError
 from src.domain.menu import Menu
 from src.domain.option import Option
+from src.domain.option_group import OptionGroup
 from src.domain.payment import Payment
 from src.domain.quantity import Quantity
 from src.application.order_service import OrderService
@@ -15,16 +18,33 @@ def parse_menu_choice(raw_input: str, menu_count: int) -> int:
 
     return value
 
-def parse_option_selection(raw_input: str, options: list[Option]) -> list[Option]:
-    raw_input = raw_input.strip()
+def parse_group_selection(raw: str, group: OptionGroup) -> list[Option]:
+    raw = raw.strip()
 
-    if not raw_input:
-        return []
+    if len(group.options) == 1:
+        try:
+            count = int(raw) if raw else 0
+        except ValueError:
+            raise ValueError("숫자를 입력해주세요.")
 
-    try:
-        return [options[int(option) - 1] for option in raw_input.split()]
-    except (ValueError, IndexError):
-        raise ValueError("잘못된 옵션 번호입니다.")
+        if count < 0:
+            raise ValueError("수량은 0 이상이어야 합니다.")
+
+        selected = [group.options[0]] * count
+    else:
+        selected = []
+        for name in raw.split():
+            matched = next((option for option in group.options if option.name.upper() == name.upper()), None)
+            if matched is None:
+                raise ValueError("HOT 또는 COLD 입력해주세요 (대소구분X)")
+            selected.append(matched)
+
+    if not group.min_quantity.value <= len(selected) <= group.max_quantity.value:
+        raise ValueError(
+            f"{group.name}은(는) {group.min_quantity.value}~{group.max_quantity.value}개 선택해야 합니다."
+        )
+
+    return selected
 
 def parse_quantity(raw_input: str) -> Quantity:
     value = int(raw_input)
@@ -36,7 +56,7 @@ def parse_quantity(raw_input: str) -> Quantity:
 
 
 class CLI:
-    def __init__(self, menus: list[Menu], order_service: OrderService, payment=Payment):
+    def __init__(self, menus: list[Menu], order_service: OrderService, payment: Payment):
         self.menus = menus
         self.order_service = order_service
         self.payment = payment
@@ -58,6 +78,7 @@ class CLI:
             self._order_menu(self.menus[choice-1])
 
     def _show_menu(self) -> None:
+        time.sleep(0.7)
         print("=========== Cafe Mini Kiosk ===========\n")
         print("                [MENU]                 ")
         print("---------------------------------------")
@@ -78,20 +99,30 @@ class CLI:
             except ValueError:
                 print("잘못된 입력입니다. 다시 입력해주세요.")
 
-    def _input_options(self, menu: Menu, options: list[Option]) -> list[Option]:
-        if not options:
+    def _input_options(self, menu: Menu) -> list[Option]:
+        if not menu.option_groups:
             return []
-        
-        print(f"\n옵션 ({menu.name})")
-        for i, option in enumerate(options, start=1):
-            tab = "\t\t\t" if len(option.name) <= 5 else "\t\t" 
-            print(f"{i}. {option.name}{tab}(+{option.additional_price.amount}원)")
+
+        print(f"\n옵션({menu.name})")
+
+        selected_options: list[Option] = []
+        for i, group in enumerate(menu.option_groups, start=1):
+            selected_options += self._input_group(i, group)
+
+        return selected_options
+
+    def _input_group(self, index: int, group: OptionGroup) -> list[Option]:
+        if len(group.options) == 1:
+            option = group.options[0]
+            label = f"{option.name} (+{option.additional_price.amount}원)"
+        else:
+            label = "/".join(option.name for option in group.options)
 
         while True:
             try:
-                return parse_option_selection(input(">> 옵션 선택: "), options)
-            except ValueError:
-                print("잘못된 입력입니다. 다시 입력해주세요.")
+                return parse_group_selection(input(f"{index}. {label}: "), group)
+            except ValueError as e:
+                print(f"잘못된 입력입니다. {e}")
 
     def _input_quantity(self) -> Quantity:
         while True:
@@ -101,8 +132,7 @@ class CLI:
                 print("잘못된 입력입니다. 다시 입력해주세요.")
 
     def _order_menu(self, menu: Menu) -> None:
-        options = [option for group in menu.option_groups for option in group.options]
-        selected_options = self._input_options(menu, options)
+        selected_options = self._input_options(menu)
         quantity = self._input_quantity()
 
         try:
@@ -115,7 +145,7 @@ class CLI:
 
     def _checkout(self) -> None:
         if len(self.cart) == 0:
-            print("장바구니가 비어있습니다.")
+            print("장바구니가 비어있습니다.\n")
             return
 
         print(f"총 금액: {self.cart.total_price().amount}원")
@@ -130,6 +160,3 @@ class CLI:
             return
 
         print(f"결제에 성공했습니다! 남은 잔액: {self.payment.balance.amount}원\n")
-
-    
-
