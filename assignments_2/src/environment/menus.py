@@ -28,14 +28,14 @@ def create_menu() -> list[Menu]:
         name="샷추가",
         min_quantity=Quantity(0),
         max_quantity=Quantity(4),
-        options=[Option(name="샷추가", additional_price=Money(500))],
+        options=[Option(name="샷추가", additional_price=Money(500), recipe=Recipe(items=[RecipeItem(bean, Quantity(10))]))]
     )
 
     syrup_group = OptionGroup(
         name="시럽추가",
         min_quantity=Quantity(0),
         max_quantity=Quantity(2),
-        options=[Option(name="시럽추가", additional_price=Money(200))]
+        options=[Option(name="시럽추가", additional_price=Money(200), recipe=Recipe(items=[RecipeItem(syrup, Quantity(10))]))]
     )
 
     americano = Menu(
