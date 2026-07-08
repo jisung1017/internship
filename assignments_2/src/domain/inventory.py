@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass, field
 
 from src.domain.ingredient import Ingredient
@@ -50,4 +51,19 @@ class Inventory:
         except OutOfStockError:
             return False
         
+        return True
+    
+    def consume_all(self, requirements: list[tuple[Recipe, Quantity]]) -> None:
+        for recipe, menu_quantity in requirements:
+            self.consume(recipe, menu_quantity)
+
+    def can_consume_all(self, requirements: list[tuple[Recipe, Quantity]]) -> bool:
+        # 깊은 복사로 원본과 독립적인 사본으로 검사
+        simulation = copy.deepcopy(self)
+
+        try:
+            simulation.consume_all(requirements)
+        except (OutOfStockError, ValueError):
+            return False
+
         return True
