@@ -1,0 +1,180 @@
+import pytest
+
+from src.domain.exceptions import InsufficientBalanceError, OutOfStockError
+from src.domain.payment import Payment
+from src.domain.money import Money
+from src.domain.inventory import Inventory, InventoryItem
+from src.domain.ingredient import Ingredient
+from src.domain.quantity import Quantity
+from src.application.order_service import OrderService
+from src.domain.cart import Cart, CartItem
+from src.domain.menu import Menu
+from src.domain.recipe import Recipe, RecipeItem
+from src.domain.option import Option
+from src.domain.option_group import OptionGroup
+
+def create_enough_payment(balance: int = 10000) -> Payment:
+    return Payment(balance=Money(balance))
+
+def create_poor_payment(balance: int = 100) -> Payment:
+    return Payment(balance=Money(balance))
+
+def create_inventory_with_bean(quantity: int) -> Inventory:
+    return Inventory(items=[InventoryItem(Ingredient("원두"), Quantity(quantity))])
+
+def create_menu(name: str, price: int) -> Menu:
+    recipe = Recipe(
+        items=[
+            RecipeItem(
+                ingredient=Ingredient("원두"),
+                quantity=Quantity(18),
+            )
+        ]
+    )
+
+    return Menu(
+        name=name,
+        price=Money(price),
+        recipe=recipe,
+        option_groups=[],
+    )
+
+def create_menu_with_shot_option() -> Menu:
+    recipe = Recipe(
+        items=[
+            RecipeItem(
+                ingredient=Ingredient("원두"),
+                quantity=Quantity(18),
+            )
+        ]
+    )
+
+    shot_option = Option(name="샷 추가", additional_price=Money(500))
+    shot_group = OptionGroup(
+        name="샷",
+        min_quantity=Quantity(0),
+        max_quantity=Quantity(3),
+        options=[shot_option],
+    )
+
+    return Menu(
+        name="아메리카노",
+        price=Money(3000),
+        recipe=recipe,
+        option_groups=[shot_group],
+    )
+
+def create_cart_item(
+    name: str,
+    price: int,
+    quantity: int,
+    selected_options: list[Option] | None = None,
+) -> CartItem:
+    return CartItem(
+        menu=create_menu(name, price),
+        quantity=Quantity(quantity),
+        selected_options=selected_options or [],
+    )
+
+@pytest.fixture
+def americano_cart() -> Cart:
+        cart = Cart()
+        item = create_cart_item(
+            name="아메리카노",
+            price=3000,
+            quantity=2,
+        )
+
+        cart.add_item(item)
+
+        return cart
+
+
+class TestOrderServiceValidation:
+    
+    def test_checkout_raises_out_of_stock_error_and_clears_cart(self, americano_cart):
+        """재고가 부족하면 OutOfStockError가 발생하고 장바구니가 비워진다."""
+        # Given: 잔액은 충분하지만, 원두 재고는 부족한 상황 (아메리카노는 18개 필요)
+        payment = create_enough_payment()
+        inventory = create_inventory_with_bean(quantity=5) 
+        service = OrderService(payment, inventory)
+
+        # When & Then: 결제 시 예외 발생 확인
+        with pytest.raises(OutOfStockError):
+            service.checkout(americano_cart)
+
+        # Then: 장바구니가 비워졌는지 확인
+        assert len(americano_cart) == 0
+
+    def test_checkout_raises_insufficient_balance_and_clear_cart(self, americano_cart):
+        """잔액이 부족하면 InsufficientBalanceError가 발생하고 장바구니가 비워진다."""
+        # Given: 재고는 충분하지만, 돈이 없는 상황
+        payment = create_poor_payment()
+        inventory = create_inventory_with_bean(quantity=100)
+        service = OrderService(payment, inventory)
+
+        # When & Then
+        with pytest.raises(InsufficientBalanceError):
+            service.checkout(americano_cart)   
+
+        assert len(americano_cart) == 0
+
+    def test_checkout_boundary_payment_and_inventory(self, americano_cart):
+        payment = create_enough_payment(6000)
+        inventory = create_inventory_with_bean(36)
+        service = OrderService(payment, inventory)
+
+        service.checkout(americano_cart)
+
+        assert payment.balance == Money(0)
+        assert inventory.items[0].quantity == Quantity(0)
+        assert len(americano_cart) == 0
+
+
+class TestOrderServiceAddToCart:
+
+    def test_add_to_cart_appends_valid_item(self):
+        cart = Cart()
+        payment = create_enough_payment()
+        inventory = create_inventory_with_bean(quantity=100)
+        service = OrderService(payment, inventory)
+
+        menu = create_menu_with_shot_option()
+        shot_option = menu.option_groups[0].options[0]
+
+        service.add_to_cart(cart, menu, Quantity(1), [shot_option])
+
+        assert len(cart) == 1
+        assert cart.items[0].menu == menu
+        assert cart.items[0].selected_options == [shot_option]
+
+    def test_add_to_cart_raises_when_option_invalid_and_does_not_add_item(self):
+        cart = Cart()
+        payment = create_enough_payment()
+        inventory = create_inventory_with_bean(quantity=100)
+        service = OrderService(payment, inventory)
+
+        menu = create_menu_with_shot_option()
+        invalid_option = Option(name="시럽 추가", additional_price=Money(300))
+
+        with pytest.raises(ValueError):
+            service.add_to_cart(cart, menu, Quantity(1), [invalid_option])
+
+        assert len(cart) == 0
+
+class TestOrderServiceAtomicity:
+    
+    def test_checkout_does_not_charge_when_is_out_of_stock(self, americano_cart):
+        """재고가 부족하여 실패했을 때, 유저의 잔액은 차감되지 않아야 한다 (원자성)."""
+        # Given
+        initial_balance = 10000
+        payment = create_enough_payment(balance=initial_balance)
+        inventory = create_inventory_with_bean(quantity=5)
+        service = OrderService(payment, inventory)
+
+        # When
+        with pytest.raises(OutOfStockError):
+            service.checkout(americano_cart)
+
+        # Then: 처음 잔액 그대로 유지되었는지 검증
+        assert payment.balance == Money(initial_balance)

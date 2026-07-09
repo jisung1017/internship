@@ -1,102 +1,121 @@
 import pytest
 
 from src.domain.money import Money
-
-def test_create_money():
-    money = Money(2026)
-
-    assert money.amount == 2026
-
-def test_float_money_raises_type_error():
-    with pytest.raises(TypeError):
-        Money(1.7)
-
-def test_string_money_raises_type_error():
-    with pytest.raises(TypeError):
-        Money("1000")
-
-def test_bool_money_raises_type_error():
-    with pytest.raises(TypeError):
-        Money(True)
+from src.domain.quantity import Quantity
 
 
-def test_negative_money_raises_value_error():
-    with pytest.raises(ValueError):
-        Money(-9999)
-        
-def test_money_add():
-    money1 = Money(1000)
-    money2 = Money(400)
+class TestMoneyValidation:
 
-    result = money1.add(money2)
+    def test_money_must_be_integer(self):
+        with pytest.raises(TypeError):
+            Money(1.7)
 
-    assert result == Money(1400)
+        with pytest.raises(TypeError):
+            Money("1000")
 
-def test_money_subtract():
-    money1 = Money(1000)
-    money2 = Money(400)
+        with pytest.raises(TypeError):
+            Money(True)
 
-    result = money1.subtract(money2)
+    def test_money_cannot_be_negative(self):
+        with pytest.raises(ValueError):
+            Money(-1)
 
-    assert result == Money(600)    
 
-def test_money_subtract_negative_result_raises_value_error():
-    money1 = Money(300)
-    money2 = Money(500)
+class TestMoneyBehavior:
 
-    with pytest.raises(ValueError):
-        money1.subtract(money2)
+    def test_add(self):
+        assert Money(1000).add(Money(400)) == Money(1400)
 
-def test_money_multiply():
-    money = Money(1000)
-    
-    result = money.multiply(3)
+    def test_add_zero(self):
+        assert Money(1000).add(Money(0)) == Money(1000)
 
-    assert result == Money(3000)
+    def test_subtract(self):
+        assert Money(1000).subtract(Money(400)) == Money(600)
 
-def test_money_multiply_negative_result_raises_value_error():
-    money = Money(300)
+    def test_subtract_zero(self):
+        assert Money(1000).subtract(Money(0)) == Money(1000)
 
-    with pytest.raises(ValueError):
-        money.multiply(-1)
+    def test_subtract_same_amount_returns_zero(self):
+        assert Money(1000).subtract(Money(1000)) == Money(0)
 
-def test_money_equal():
-    assert Money(1000) == Money(1000)
+    def test_subtract_result_cannot_be_negative(self):
+        with pytest.raises(ValueError):
+            Money(300).subtract(Money(500))
 
-def test_money_not_equal():
-    assert Money(1000) != Money(3000)
+    def test_multiply(self):
+        assert Money(3000).multiply(Quantity(2)) == Money(6000)
 
-def test_zero_money():
-    money = Money(0)
+    def test_multiply_by_zero(self):
+        assert Money(3000).multiply(Quantity(0)) == Money(0)
 
-    assert money.amount == 0
+    def test_multiplier_must_be_quantity(self):
+        with pytest.raises(TypeError):
+            Money(3000).multiply(2)
 
-def test_money_is_immutable_after_add():
-    money1 = Money(300)
-    money2 = Money(500)
 
-    _ = money1.add(money2)
+class TestMoneyComparison:
 
-    assert money1 == Money(300)
-    assert money2 == Money(500)
+    @pytest.mark.parametrize("left, right, expected", [
+        (Money(1000), Money(1000), True),
+        (Money(1000), Money(3000), False),
+    ])
+    def test_equality(self, left, right, expected):
+        assert (left == right) is expected
 
-def test_money_add_zero():
-    money = Money(5)
+    @pytest.mark.parametrize("left, right, expected", [
+        (Money(1000), Money(2000), True),
+        (Money(1000), Money(1000), False),
+        (Money(2000), Money(1000), False),
+    ])
+    def test_less_than(self, left, right, expected):
+        assert (left < right) is expected
 
-    result = money.add(Money(0))
+    @pytest.mark.parametrize("left, right, expected", [
+        (Money(1000), Money(2000), False),
+        (Money(1000), Money(1000), False),
+        (Money(2000), Money(1000), True),
+    ])
+    def test_greater_than(self, left, right, expected):
+        assert (left > right) is expected
 
-    assert result == Money(5)
+    @pytest.mark.parametrize("left, right, expected", [
+        (Money(1000), Money(2000), True),
+        (Money(1000), Money(1000), True),
+        (Money(2000), Money(1000), False),
+    ])
+    def test_less_and_equal_than(self, left, right, expected):
+        assert (left <= right) is expected
 
-def test_money_subtract_zero():
-    money = Money(5)
+    @pytest.mark.parametrize("left, right, expected", [
+        (Money(1000), Money(2000), False),
+        (Money(1000), Money(1000), True),
+        (Money(2000), Money(1000), True),
+    ])
+    def test_greater_and_equal_than(self, left, right, expected):
+        assert (left >= right) is expected
 
-    result = money.subtract(Money(0))
+class TestMoneyImmutability:
 
-    assert result == Money(5)
+    def test_add_returns_new_instance(self):
+        money = Money(1000)
 
-def test_money_multiply_zero():
-    money = Money(5)
+        result = money.add(Money(500))
 
-    result = money.multiply(0)
+        assert result == Money(1500)
+        assert result is not money
 
-    assert result == Money(0)
+    def test_subtract_returns_new_instance(self):
+        money = Money(1000)
+
+        result = money.subtract(Money(500))
+
+        assert result == Money(500)
+        assert result is not money
+
+    def test_multiply_returns_new_instance(self):
+        money = Money(3000)
+
+        result = money.multiply(Quantity(2))
+
+        assert result == Money(6000)
+        assert result is not money
