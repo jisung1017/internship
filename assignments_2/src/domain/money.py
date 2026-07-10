@@ -34,7 +34,7 @@ class Money:
         return Money(result)
 
     def multiply(self, multiplier: Quantity) -> "Money":
-        if type(multiplier) is not Quantity:
+        if not isinstance(multiplier, Quantity):
             raise TypeError("Multiplier는 Quantity 타입이어야 합니다.")
 
         return Money(self.amount * multiplier.value)

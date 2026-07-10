@@ -9,10 +9,10 @@ class InventoryItem:
     quantity: Quantity
 
     def __post_init__(self):
-        if type(self.ingredient) is not Ingredient:
+        if not isinstance(self.ingredient, Ingredient):
             raise TypeError("InventoryItem 의 ingredient 는 Ingredient 여야 한다.")
     
-        if type(self.quantity) is not Quantity:
+        if not isinstance(self.quantity, Quantity):
             raise TypeError("InventoryItem 의 quantity 는 Quantity 여야 한다.")
     
     def decrease(self, quantity: Quantity) -> None:
