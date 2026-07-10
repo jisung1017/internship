@@ -13,24 +13,24 @@ class Menu:
     option_groups: list[OptionGroup] = field(default_factory=list)
 
     def __post_init__(self):
-        if type(self.name) is not str:
+        if not isinstance(self.name, str):
             raise TypeError("Menu 이름은 문자열이여야 합니다.")
     
         self.name = self.name.strip()
         if not self.name:
             raise  ValueError("Menu 이름은 빈칸일 수 없습니다.")
         
-        if type(self.price) is not Money:
+        if not isinstance(self.price, Money):
             raise TypeError("Menu 가격은 Money 데이터형이어야 합니다.")
     
-        if type(self.recipe) is not Recipe:
+        if not isinstance(self.recipe, Recipe):
             raise TypeError("Recipe 는 Recipe 타입이여야 합니다.")
         
-        if type(self.option_groups) is not list:
+        if not isinstance(self.option_groups, list):
             raise TypeError("Menu OptionGroup 은 list 여야 합니다.")
             
         for option_group in self.option_groups:
-            if type(option_group) is not OptionGroup:
+            if not isinstance(option_group, OptionGroup):
                 raise TypeError("OptionGroup 으로만 이루어져야 합니다.")
     
     def validate_selected_options(self, selected_options: list[Option]) -> None:
