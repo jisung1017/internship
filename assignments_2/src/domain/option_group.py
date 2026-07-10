@@ -12,18 +12,18 @@ class OptionGroup:
     options: list[Option] = field(default_factory=list)
 
     def __post_init__(self):
-        if type(self.name) is not str:
+        if not isinstance(self.name, str):
             raise TypeError("OptionGroup 이름은 문자열이여야 합니다.")
     
         self.name = self.name.strip()
         if not self.name:
             raise  ValueError("OptionGroup 이름은 빈칸일 수 없습니다.")
         
-        if type(self.options) is not list:
+        if not isinstance(self.options, list):
             raise TypeError("OptionGroup options 는 list 여야 합니다.")
         
         for option in self.options:
-            if type(option) is not Option:
+            if not isinstance(option, Option):
                 raise TypeError("OptionGroup options 는 Option 타입으로만 이루어져야 합니다.")
 
         if not isinstance(self.min_quantity, Quantity):
