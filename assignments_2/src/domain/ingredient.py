@@ -5,7 +5,7 @@ class Ingredient:
     name: str
 
     def __post_init__(self):
-        if type(self.name) is not str:
+        if not isinstance(self.name, str):
             raise TypeError("Ingredient 이름은 문자열이여야 합니다.")
     
         self.name = self.name.strip()

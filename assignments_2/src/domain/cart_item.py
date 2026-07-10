@@ -12,17 +12,17 @@ class CartItem:
     selected_options: list[Option] = field(default_factory=list)
 
     def __post_init__(self):
-        if type(self.menu) is not Menu:
+        if not isinstance(self.menu, Menu):
             raise TypeError("CartItem menu는 Menu 타입이어야 합니다.")
 
-        if type(self.quantity) is not Quantity:
+        if not isinstance(self.quantity, Quantity):
             raise TypeError("CartItem quantity는 Quantity 타입이어야 합니다.")
 
-        if type(self.selected_options) is not list:
+        if not isinstance(self.selected_options, list) :
             raise TypeError("CartItem selected_options는 list 타입이어야 합니다.")
 
         for option in self.selected_options:
-            if type(option) is not Option:
+            if not isinstance(option, Option):
                 raise TypeError(
                     "CartItem selected_options는 Option 타입으로만 이루어져야 합니다."
                 )
