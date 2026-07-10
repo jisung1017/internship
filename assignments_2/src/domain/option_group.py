@@ -14,23 +14,37 @@ class OptionGroup:
     def __post_init__(self):
         if not isinstance(self.name, str):
             raise TypeError("OptionGroup 이름은 문자열이여야 합니다.")
-    
+
         self.name = self.name.strip()
         if not self.name:
-            raise  ValueError("OptionGroup 이름은 빈칸일 수 없습니다.")
-        
+            raise ValueError("OptionGroup 이름은 빈칸일 수 없습니다.")
+
         if not isinstance(self.options, list):
             raise TypeError("OptionGroup options 는 list 여야 합니다.")
-        
+
         for option in self.options:
             if not isinstance(option, Option):
                 raise TypeError("OptionGroup options 는 Option 타입으로만 이루어져야 합니다.")
 
         if not isinstance(self.min_quantity, Quantity):
             raise TypeError("OptionGroup min_quantity 는 Quantity 자료형 이여야 합니다.")
-             
+
         if not isinstance(self.max_quantity, Quantity):
             raise TypeError("OptionGroup max_quantity 는 Quantity 자료형 이여야 합니다.")
-        
+
         if self.min_quantity.is_greater_than(self.max_quantity):
             raise ValueError("최소 수량은 최대 수량보다 많을 수 없습니다.")
+
+    def contains(self, option: Option) -> bool:
+        return option in self.options
+
+    def count_selected(self, selected_options: list[Option]) -> int:
+        return sum(1 for option in selected_options if self.contains(option))
+
+    def validate(self, selected_options: list[Option]) -> None:
+        count = self.count_selected(selected_options)
+
+        if count < self.min_quantity.value:
+            raise ValueError(f"{self.name}은(는) 최소 {self.min_quantity.value}개 선택해야 합니다.")
+        if count > self.max_quantity.value:
+            raise ValueError(f"{self.name}은(는) 최대 {self.max_quantity.value}개까지 선택 가능합니다.")
