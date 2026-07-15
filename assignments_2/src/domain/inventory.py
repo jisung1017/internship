@@ -95,3 +95,9 @@ class Inventory:
             self.items.append(InventoryItem(ingredient, quantity))
 
         self._record(ingredient, quantity.value, "RESTOCK")
+
+    def get_quantity(self, ingredient: Ingredient) -> Quantity:
+        try:
+            return self._find_item(ingredient).quantity
+        except OutOfStockError:
+            return Quantity(0)

@@ -211,14 +211,14 @@ class TestInventoryRestock:
 
         inventory.restock(Ingredient("원두"), Quantity(100))
 
-        assert get_quantity(inventory, Ingredient("원두")) == Quantity(270)
+        assert inventory.get_quantity(Ingredient("원두")) == Quantity(270)
 
     def test_restock_registers_new_ingredient(self):
         inventory = create_inventory()
 
         inventory.restock(Ingredient("우유"), Quantity(500))
 
-        assert get_quantity(inventory, Ingredient("우유")) == Quantity(500)
+        assert inventory.get_quantity(Ingredient("우유")) == Quantity(500)
 
     def test_restock_zero_raises_value_error(self):
         inventory = create_inventory()
