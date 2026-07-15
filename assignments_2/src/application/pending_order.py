@@ -38,7 +38,7 @@ class PendingOrder:
 
     def set_quantity(self, quantity: Quantity) -> None:
         if quantity.is_greater_than(MAX_ORDER_QUANTITY) or MIN_ORDER_QUANTITY.is_greater_than(quantity):
-            raise ValueError("수량은 1~10 사이여야 합니다.")
+            raise ValueError(f"수량은 {MIN_ORDER_QUANTITY}~{MAX_ORDER_QUANTITY} 사이여야 합니다.")
 
         self.quantity = quantity
 

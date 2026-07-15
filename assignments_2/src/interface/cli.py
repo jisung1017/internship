@@ -1,13 +1,12 @@
 import time
 
+from src.application.kiosk_session import KioskSession, StepType
 from src.domain.cart import Cart
+from src.domain.cart_item import CartItem
 from src.domain.exceptions import InsufficientBalanceError, OutOfStockError
-from src.domain.menu import Menu
 from src.domain.option import Option
 from src.domain.option_group import OptionGroup
-from src.domain.payment import Payment
 from src.domain.quantity import Quantity
-from src.application.order_service import OrderService
 
 
 def parse_menu_choice(raw_input: str, menu_count: int) -> int:
@@ -18,33 +17,6 @@ def parse_menu_choice(raw_input: str, menu_count: int) -> int:
 
     return value
 
-def parse_group_selection(raw: str, group: OptionGroup) -> list[Option]:
-    raw = raw.strip()
-
-    if len(group.options) == 1:
-        try:
-            count = int(raw) if raw else 0
-        except ValueError:
-            raise ValueError("숫자를 입력해주세요.")
-
-        if count < 0:
-            raise ValueError("수량은 0 이상이어야 합니다.")
-
-        selected = [group.options[0]] * count
-    else:
-        selected = []
-        for name in raw.split():
-            matched = next((option for option in group.options if option.name.upper() == name.upper()), None)
-            if matched is None:
-                raise ValueError("HOT 또는 COLD 입력해주세요 (대소구분X)")
-            selected.append(matched)
-
-    if not group.min_quantity.value <= len(selected) <= group.max_quantity.value:
-        raise ValueError(
-            f"{group.name}은(는) {group.min_quantity.value}~{group.max_quantity.value}개 선택해야 합니다."
-        )
-
-    return selected
 
 def parse_quantity(raw_input: str) -> Quantity:
     value = int(raw_input)
@@ -56,107 +28,199 @@ def parse_quantity(raw_input: str) -> Quantity:
 
 
 class CLI:
-    def __init__(self, menus: list[Menu], order_service: OrderService, payment: Payment):
-        self.menus = menus
-        self.order_service = order_service
-        self.payment = payment
-        self.cart = Cart()
-    
+    def __init__(self, session: KioskSession):
+        self.session = session
+        self.handlers = {
+            StepType.MENU: self._show_menu_screen,
+            StepType.OPTION: self._show_option_screen,
+            StepType.QUANTITY: self._show_quantity_screen,
+            StepType.CART: self._show_cart_screen,
+            StepType.PAYMENT: self._show_payment_screen,
+            StepType.COMPLETE: self._show_complete_screen,
+        }
+
     def run(self) -> None:
-        while True:
-            self._show_menu()
-            choice = self._input_menu_choice()
+        while self.session.step != StepType.END:
+            self.handlers[self.session.step]()
 
-            if choice == 0:
-                print("종료합니다.")
-                break
+        print("종료합니다.")
 
-            if choice == len(self.menus) + 1:
-                self._checkout()
-                continue
-                
-            self._order_menu(self.menus[choice-1])
+    # ---------- MENU ----------
 
-    def _show_menu(self) -> None:
+    def _show_menu_screen(self) -> None:
         time.sleep(0.7)
+        menus = self.session.menus
+        self._print_menu(menus)
+
+        choice = self._input_menu_choice(len(menus))
+
+        if choice == 0:
+            self.session.end()
+            return
+
+        if choice == len(menus) + 1:
+            self.session.go_to_cart()
+            return
+
+        self.session.select_menu(choice)
+
+    def _print_menu(self, menus) -> None:
         print("=========== Cafe Mini Kiosk ===========\n")
         print("                [MENU]                 ")
         print("---------------------------------------")
 
-        for i, menu in enumerate(self.menus, start=1):
-            tab = "\t\t\t" if len(menu.name) <= 5 else "\t\t" 
+        for i, menu in enumerate(menus, start=1):
+            tab = "\t\t\t" if len(menu.name) <= 5 else "\t\t"
             print(f"{i}. {menu.name}{tab}{menu.price.amount}원")
 
         print("---------------------------------------")
-        print(f"{len(self.menus) + 1}. 결제\t\t\t(잔액: {self.payment.balance.amount}원)")
+        print(f"{len(menus) + 1}. 장바구니\t\t(잔액: {self.session.get_balance().amount}원)")
         print("0. 종료")
 
-    def _input_menu_choice(self) -> int:
+    def _input_menu_choice(self, menu_count: int) -> int:
         while True:
             try:
-                return parse_menu_choice(input(">> 메뉴 선택: "), len(self.menus))
-            
+                return parse_menu_choice(input(">> 메뉴 선택: "), menu_count)
             except ValueError:
                 print("잘못된 입력입니다. 다시 입력해주세요.")
 
-    def _input_options(self, menu: Menu) -> list[Option]:
-        if not menu.option_groups:
-            return []
+    # ---------- OPTION ----------
 
+    def _show_option_screen(self) -> None:
+        menu = self.session.get_selected_menu()
+        group = self.session.current_option_group()
+        group_index = self.session.current_option_group_index()
+
+        self._print_option_header(menu, group_index)
+        raw = input(f"{self._group_label(group, group_index)}: ")
+        self._handle_option_input(group, raw)
+
+    def _print_option_header(self, menu, group_index: int) -> None:
+        if group_index != 0:
+            return
         print(f"\n옵션({menu.name})")
 
-        selected_options: list[Option] = []
-        for i, group in enumerate(menu.option_groups, start=1):
-            selected_options += self._input_group(i, group)
+    def _group_label(self, group: OptionGroup, group_index: int) -> str:
+        index = group_index + 1
 
-        return selected_options
-
-    def _input_group(self, index: int, group: OptionGroup) -> list[Option]:
         if len(group.options) == 1:
             option = group.options[0]
-            label = f"{option.name} (+{option.additional_price.amount}원)"
-        else:
-            label = "/".join(option.name for option in group.options)
+            return f"{index}. {option.name} (+{option.additional_price.amount}원)"
 
-        while True:
-            try:
-                return parse_group_selection(input(f"{index}. {label}: "), group)
-            except ValueError as e:
-                print(f"잘못된 입력입니다. {e}")
+        names = "/".join(option.name for option in group.options)
+        return f"{index}. {names}"
 
-    def _input_quantity(self) -> Quantity:
-        while True:
-            try:
-                return parse_quantity(input(">> 수량 선택 (1~10): "))
-            except ValueError:
-                print("잘못된 입력입니다. 다시 입력해주세요.")
+    def _handle_option_input(self, group: OptionGroup, raw: str) -> None:
+        try:
+            selected = group.parse_selection(raw)
+        except ValueError as e:
+            print(f"잘못된 입력입니다. {e}")
+            return
 
-    def _order_menu(self, menu: Menu) -> None:
-        selected_options = self._input_options(menu)
-        quantity = self._input_quantity()
+        self.session.select_option_group(selected)
+
+    # ---------- QUANTITY ----------
+
+    def _show_quantity_screen(self) -> None:
+        raw = input(">> 수량 선택 (1~10): ")
 
         try:
-            self.order_service.add_to_cart(self.cart, menu, quantity, selected_options)
+            quantity = parse_quantity(raw)
+        except ValueError:
+            print("잘못된 입력입니다. 다시 입력해주세요.")
+            return
+
+        try:
+            self.session.select_quantity(quantity)
         except ValueError as e:
             print(f"잘못된 입력입니다. {e}")
             return
 
         print("장바구니에 상품이 담겼습니다.\n")
 
-    def _checkout(self) -> None:
-        if len(self.cart) == 0:
+    # ---------- CART ----------
+
+    def _show_cart_screen(self) -> None:
+        cart = self.session.cart
+
+        if len(cart) == 0:
             print("장바구니가 비어있습니다.\n")
+            self.session.go_to_menu()
             return
 
-        print(f"총 금액: {self.cart.total_price().amount}원")
+        self._print_cart(cart)
+        choice = self._input_binary_choice()
 
+        if choice == 1:
+            self.session.go_to_menu()
+            return
+
+        self.session.go_to_payment()
+
+    def _print_cart(self, cart: Cart) -> None:
+        print("\n[장바구니]")
+        for item in cart.items:
+            print(self._format_cart_item(item))
+
+        print(f"\n총 금액: {cart.total_price().amount}원")
+        print("1. 메뉴 더 담기")
+        print("2. 결제하기")
+
+    def _format_cart_item(self, item: CartItem) -> str:
+        options_text = self._format_options(item.selected_options)
+        options_suffix = f" ({options_text})" if options_text else ""
+
+        return f"- {item.menu.name}{options_suffix}x{item.quantity.value} : {item.total_price().amount}원"
+
+    def _format_options(self, options: list[Option]) -> str:
+        counts: dict[str, int] = {}
+        order: list[str] = []
+
+        for option in options:
+            if option.name not in counts:
+                order.append(option.name)
+            counts[option.name] = counts.get(option.name, 0) + 1
+
+        return ", ".join(self._format_option_count(name, counts[name]) for name in order)
+
+    def _format_option_count(self, name: str, count: int) -> str:
+        if count == 1:
+            return name
+        return f"{name} x{count}"
+
+    def _input_binary_choice(self) -> int:
+        while True:
+            raw = input(">> 선택: ")
+            if raw in ("1", "2"):
+                return int(raw)
+            print("잘못된 입력입니다. 다시 입력해주세요.")
+
+    # ---------- PAYMENT ----------
+
+    def _show_payment_screen(self) -> None:
+        cart = self.session.cart
+        print(f"\n총 금액: {cart.total_price().amount}원")
+        print("1. 결제 승인")
+        print("2. 취소")
+
+        choice = self._input_binary_choice()
+
+        if choice == 2:
+            self.session.go_to_cart()
+            return
+
+        self._checkout()
+
+    def _checkout(self) -> None:
         try:
-            self.order_service.checkout(self.cart)
+            self.session.checkout()
         except OutOfStockError:
             print("재고가 부족합니다. 장바구니를 초기화 합니다.\n")
-            return
         except InsufficientBalanceError:
             print("잔액이 부족합니다. 장바구니를 초기화 합니다.\n")
-            return
 
-        print(f"결제에 성공했습니다! 남은 잔액: {self.payment.balance.amount}원\n")
+    # ---------- COMPLETE ----------
+
+    def _show_complete_screen(self) -> None:
+        print(f"결제에 성공했습니다! 남은 잔액: {self.session.get_balance().amount}원\n")
+        self.session.go_to_menu()
