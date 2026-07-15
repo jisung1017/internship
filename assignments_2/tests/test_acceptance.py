@@ -205,3 +205,72 @@ class TestOptionValidationDefenseInDepth:
             service.add_to_cart(cart, menu, Quantity(1), [])
 
         assert len(cart) == 0
+
+
+class TestDevelopmentModeValidation:
+    """
+    개발자 모드: 메뉴 화면에서 '77'를 입력하면 진입하며,
+    재고 입고(restock)와 이력 기록을 담당한다.
+    """
+
+    def test_restock_increases_inventory_and_records_history(self, monkeypatch):
+        """
+        Given: 원두 재고 1000개
+        When: 개발자 모드에 진입해 원두 100개를 입고하고 종료한다
+        Then: 원두 재고가 1100개로 증가하고, 입고 이력이 남는다
+        """
+        cli = build_cli(
+            monkeypatch,
+            inputs=["77", "원두", "100", "0", "0"],
+            balance=10000,
+            bean_quantity=1000,
+        )
+
+        cli.run()
+
+        inventory = cli.session.get_inventory()
+        assert inventory.get_quantity(Ingredient("원두")) == Quantity(1100)
+        assert len(inventory.history) == 1
+        assert inventory.history[0].change == 100
+        assert inventory.history[0].reason == "RESTOCK"
+
+    def test_restock_unregistered_ingredient_shows_error_and_does_not_change_state(self, monkeypatch, capsys):
+        """
+        Given: 원두만 등록된 재고
+        When: 개발자 모드에서 등록되지 않은 '우유'를 입고 시도한다
+        Then: 에러 메시지가 출력되고, 재고와 이력은 변하지 않는다
+        """
+        cli = build_cli(
+            monkeypatch,
+            inputs=["77", "우유", "50", "0", "0"],
+            balance=10000,
+            bean_quantity=1000,
+        )
+
+        cli.run()
+
+        captured = capsys.readouterr()
+        assert "등록되지 않은 재료" in captured.out
+
+        inventory = cli.session.get_inventory()
+        assert inventory.get_quantity(Ingredient("원두")) == Quantity(1000)
+        assert len(inventory.history) == 0
+
+    def test_multiple_restocks_accumulate_history_in_order(self, monkeypatch):
+        """
+        Given: 원두 재고 1000개
+        When: 개발자 모드에서 원두를 두 번(50개, 30개) 입고한다
+        Then: 재고는 두 번 모두 반영되고, 이력이 입고 순서대로 2건 쌓인다
+        """
+        cli = build_cli(
+            monkeypatch,
+            inputs=["99", "원두", "50", "원두", "30", "0", "0"],
+            balance=10000,
+            bean_quantity=1000,
+        )
+
+        cli.run()
+
+        inventory = cli.session.get_inventory()
+        assert inventory.get_quantity(Ingredient("원두")) == Quantity(1080)
+        assert [h.change for h in inventory.history] == [50, 30]
