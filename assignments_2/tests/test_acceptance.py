@@ -1,5 +1,6 @@
 import pytest
 
+from src.application.kiosk_session import KioskSession
 from src.application.order_service import OrderService
 from src.domain.ingredient import Ingredient
 from src.domain.inventory import Inventory
@@ -32,6 +33,7 @@ def build_americano() -> Menu:
         name="샷추가",
         min_quantity=Quantity(0),
         max_quantity=Quantity(4),
+        selection_mode="count",
         options=[
             Option(
                 name="샷추가",
@@ -53,6 +55,14 @@ def build_inventory(bean_quantity: int) -> Inventory:
     return Inventory(items=[InventoryItem(Ingredient("원두"), Quantity(bean_quantity))])
 
 
+def get_quantity(inventory: Inventory, ingredient: Ingredient) -> Quantity:
+    for item in inventory.items:
+        if item.ingredient == ingredient:
+            return item.quantity
+
+    raise AssertionError(f"{ingredient.name} 재고를 찾을 수 없습니다.")
+
+
 def build_cli(monkeypatch, inputs: list[str], balance: int, bean_quantity: int) -> CLI:
     responses = iter(inputs)
     monkeypatch.setattr("builtins.input", lambda prompt="": next(responses))
@@ -61,8 +71,9 @@ def build_cli(monkeypatch, inputs: list[str], balance: int, bean_quantity: int) 
     inventory = build_inventory(bean_quantity)
     payment = Payment(balance=Money(balance))
     order_service = OrderService(payment, inventory)
+    session = KioskSession(menus=menus, order_service=order_service)
 
-    return CLI(menus, order_service, payment)
+    return CLI(session)
 
 
 class TestSuccessfulCheckout:
@@ -75,16 +86,16 @@ class TestSuccessfulCheckout:
     def test_balance_and_inventory_decrease_correctly(self, monkeypatch):
         cli = build_cli(
             monkeypatch,
-            inputs=["1", "HOT", "0", "1", "2", "0"],
+            inputs=["1", "HOT", "0", "1", "2", "2", "1", "0"],
             balance=10000,
             bean_quantity=1000,
         )
 
         cli.run()
 
-        assert cli.payment.balance == Money(7000)
-        assert cli.order_service.inventory.items[0].quantity == Quantity(982)
-        assert len(cli.cart) == 0
+        assert cli.session.get_balance() == Money(7000)
+        assert get_quantity(cli.session.order_service.inventory, Ingredient("원두")) == Quantity(982)
+        assert len(cli.session.cart) == 0
 
 
 class TestOptionConsumesInventory:
@@ -97,15 +108,15 @@ class TestOptionConsumesInventory:
     def test_option_recipe_is_consumed_on_checkout(self, monkeypatch):
         cli = build_cli(
             monkeypatch,
-            inputs=["1", "HOT", "2", "1", "2", "0"],
+            inputs=["1", "HOT", "2", "1", "2", "2", "1", "0"],
             balance=10000,
             bean_quantity=1000,
         )
 
         cli.run()
 
-        assert cli.order_service.inventory.items[0].quantity == Quantity(962)
-        assert cli.payment.balance == Money(10000 - 3000 - 500 * 2)
+        assert get_quantity(cli.session.order_service.inventory, Ingredient("원두")) == Quantity(962)
+        assert cli.session.get_balance() == Money(10000 - 3000 - 500 * 2)
 
 
 class TestInsufficientBalance:
@@ -118,7 +129,7 @@ class TestInsufficientBalance:
     def test_cart_is_cleared_and_balance_untouched(self, monkeypatch, capsys):
         cli = build_cli(
             monkeypatch,
-            inputs=["1", "HOT", "0", "1", "2", "0"],
+            inputs=["1", "HOT", "0", "1", "2", "2", "1", "0"],
             balance=100,
             bean_quantity=1000,
         )
@@ -127,8 +138,8 @@ class TestInsufficientBalance:
 
         captured = capsys.readouterr()
         assert "잔액이 부족합니다" in captured.out
-        assert cli.payment.balance == Money(100)
-        assert len(cli.cart) == 0
+        assert cli.session.get_balance() == Money(100)
+        assert len(cli.session.cart) == 0
 
 
 class TestOutOfStock:
@@ -141,7 +152,7 @@ class TestOutOfStock:
     def test_cart_is_cleared_and_inventory_untouched(self, monkeypatch, capsys):
         cli = build_cli(
             monkeypatch,
-            inputs=["1", "HOT", "0", "1", "2", "0"],
+            inputs=["1", "HOT", "0", "1", "2", "2", "1", "0"],
             balance=10000,
             bean_quantity=5,
         )
@@ -150,29 +161,29 @@ class TestOutOfStock:
 
         captured = capsys.readouterr()
         assert "재고가 부족합니다" in captured.out
-        assert cli.order_service.inventory.items[0].quantity == Quantity(5)
-        assert len(cli.cart) == 0
+        assert get_quantity(cli.session.order_service.inventory, Ingredient("원두")) == Quantity(5)
+        assert len(cli.session.cart) == 0
 
 
 class TestInvalidMenuAndOptionInput:
     """
     Given: 잔액/재고 충분
-    When: 잘못된 메뉴 번호(9)와 잘못된 옵션 인덱스(COLD)를 먼저 입력한 뒤 올바르게 재입력한다
+    When: 잘못된 메뉴 번호(9)와 잘못된 옵션 입력(COLD)을 먼저 입력한 뒤 올바르게 재입력한다
     Then: 재입력 유도 후 정상적으로 장바구니에 담기고 결제까지 성공한다
     """
 
     def test_retries_after_invalid_input_and_completes_order(self, monkeypatch):
         cli = build_cli(
             monkeypatch,
-            inputs=["9", "1", "COLD", "HOT", "0", "1", "2", "0"],
+            inputs=["9", "1", "COLD", "HOT", "0", "1", "2", "2", "1", "0"],
             balance=10000,
             bean_quantity=1000,
         )
 
         cli.run()
 
-        assert cli.payment.balance == Money(7000)
-        assert len(cli.cart) == 0
+        assert cli.session.get_balance() == Money(7000)
+        assert len(cli.session.cart) == 0
 
 
 class TestOptionValidationDefenseInDepth:
