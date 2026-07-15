@@ -39,3 +39,22 @@ class TestInventoryItemValidation:
 
         with pytest.raises(ValueError):
             inventory_item.decrease(Quantity(11))
+
+    def test_increase_inventory_item(self):
+        inventory_item = InventoryItem(
+            ingredient=Ingredient("원두"),
+            quantity=Quantity(1000),
+        )
+
+        inventory_item.increase(Quantity(50))
+
+        assert inventory_item.quantity == Quantity(1050)
+
+    def test_error_to_increase_not_quantity(self):
+        with pytest.raises(TypeError):
+            inventory_item = InventoryItem(
+                ingredient=Ingredient("원두"),
+                quantity=Quantity(1000),
+            )
+
+        inventory_item.increase(50)

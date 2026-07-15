@@ -61,7 +61,7 @@ class TestInventoryBehavior:
             ]
         )
 
-        inventory.consume(recipe, Quantity(1))
+        inventory._consume(recipe, Quantity(1))
 
         assert inventory.items[0].quantity == Quantity(153)
         assert inventory.items[1].quantity == Quantity(2250)
@@ -84,7 +84,7 @@ class TestInventoryBehavior:
         )
 
         with pytest.raises(OutOfStockError):
-            inventory.consume(recipe, Quantity(1))
+            inventory._consume(recipe, Quantity(1))
 
 
 class TestInventoryCanConsume:
@@ -202,3 +202,52 @@ class TestInventoryConsumeAll:
 
         with pytest.raises(OutOfStockError):
             inventory.consume_all([(recipe, Quantity(1))])
+
+
+class TestInventoryRestock:
+
+    def test_restock_increases_existing_ingredient(self):
+        inventory = create_inventory()
+
+        inventory.restock(Ingredient("원두"), Quantity(100))
+
+        assert get_quantity(inventory, Ingredient("원두")) == Quantity(270)
+
+    def test_restock_registers_new_ingredient(self):
+        inventory = create_inventory()
+
+        inventory.restock(Ingredient("우유"), Quantity(500))
+
+        assert get_quantity(inventory, Ingredient("우유")) == Quantity(500)
+
+    def test_restock_zero_raises_value_error(self):
+        inventory = create_inventory()
+
+        with pytest.raises(ValueError):
+            inventory.restock(Ingredient("원두"), Quantity(0))
+
+    def test_restock_records_history(self):
+        inventory = create_inventory()
+
+        inventory.restock(Ingredient("원두"), Quantity(100))
+
+        assert len(inventory.history) == 1
+        assert inventory.history[0].change == 100
+        assert inventory.history[0].reason == "RESTOCK"
+
+    def test_consume_records_history(self):
+        inventory = create_inventory()
+        recipe = Recipe(items=[RecipeItem(Ingredient("원두"), Quantity(17))])
+
+        inventory._consume(recipe, Quantity(1))
+
+        assert len(inventory.history) == 1
+        assert inventory.history[0].change == -17
+        assert inventory.history[0].reason == "CONSUME"
+
+
+    def get_quantity(inventory: Inventory, ingredient: Ingredient) -> Quantity:
+        for item in inventory.items:
+            if item.ingredient == ingredient:
+                return item.quantity
+        raise AssertionError("재고를 찾을 수 없습니다.")
