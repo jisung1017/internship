@@ -1,3 +1,4 @@
+from src.application.kiosk_session import KioskSession
 from src.application.order_service import OrderService
 from src.domain.money import Money
 from src.domain.payment import Payment
@@ -11,8 +12,9 @@ def main() -> None:
     inventory = create_inventory()
     payment = Payment(balance=Money(10000))
     order_service = OrderService(payment, inventory)
+    session = KioskSession(menus=menus, order_service=order_service)
 
-    CLI(menus, order_service, payment).run()
+    CLI(session).run()
 
 
 if __name__ == "__main__":

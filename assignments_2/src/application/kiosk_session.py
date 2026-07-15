@@ -4,6 +4,7 @@ from enum import Enum, auto
 from src.application.order_service import OrderService
 from src.application.pending_order import PendingOrder
 from src.domain.cart import Cart
+from src.domain.exceptions import InsufficientBalanceError, OutOfStockError
 from src.domain.menu import Menu
 from src.domain.money import Money
 from src.domain.option import Option
@@ -44,6 +45,15 @@ class KioskSession:
 
         return self.pending_order.current_option_group()
 
+    def current_option_group_index(self) -> int | None:
+        if self.pending_order is None:
+            return None
+
+        if self.pending_order.is_option_selection_done():
+            return None
+
+        return self.pending_order.group_index
+
     def get_menu(self, index: int) -> Menu:
         if not 1 <= index <= len(self.menus):
             raise ValueError("잘못된 메뉴 번호입니다.")
@@ -67,16 +77,21 @@ class KioskSession:
         if self.pending_order is None:
             raise ValueError("선택 중인 메뉴가 없습니다.")
 
-        self.pending_order.set_quantity(quantity)
-        self.order_service.add_to_cart(
-            self.cart,
-            self.pending_order.menu,
-            self.pending_order.quantity,
-            self.pending_order.selected_options,
-        )
+        try:
+            self.pending_order.set_quantity(quantity)
+            self.order_service.add_to_cart(
+                self.cart,
+                self.pending_order.menu,
+                self.pending_order.quantity,
+                self.pending_order.selected_options,
+            )
+        except ValueError:
+            self.pending_order = None
+            self.go_to_menu()
+            raise
 
         self.pending_order = None
-        self.step = StepType.CART
+        self.step = StepType.MENU
 
     def go_to_menu(self) -> None:
         self.step = StepType.MENU
@@ -91,7 +106,12 @@ class KioskSession:
         self.step = StepType.PAYMENT
 
     def checkout(self) -> None:
-        self.order_service.checkout(self.cart)
+        try:
+            self.order_service.checkout(self.cart)
+        except (OutOfStockError, InsufficientBalanceError):
+            self.go_to_menu()
+            raise
+
         self.step = StepType.COMPLETE
 
     def end(self) -> None:
