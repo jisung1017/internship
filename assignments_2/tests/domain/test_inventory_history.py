@@ -7,26 +7,29 @@ from src.domain.inventory_history import InventoryHistory
 
 class TestInventoryHistoryValidation:
 
-    @pytest.mark.parametrize(
-        "ingredient, change, reason, expected_exception",
-        [
-            ("원두", 100, "RESTOCK", TypeError),        # ingredient 타입 오류
-            (Ingredient("원두"), "100", "RESTOCK", TypeError),  # change 타입 오류 (문자열)
-            (Ingredient("원두"), True, "RESTOCK", TypeError),   # change 타입 오류 (불리언)
-            (Ingredient("원두"), 0, "RESTOCK", ValueError),     # change 값 오류 (0)
-            (Ingredient("원두"), 100, "너뭐야", ValueError),    # reason 값 오류
-        ],
-    )
-    def test_invalid_arguments_raise_exception(
-        self, make_ingredient, ingredient_fn, change, reason, expected_exception
-    ):
-        ingredient = ingredient_fn(make_ingredient)
-        with pytest.raises(expected_exception):
-            InventoryHistory(ingredient=ingredient, change=change, reason=reason)
-
-    def test_reason_is_required(self, make_ingredient):
+    def test_ingredient_must_be_ingredient(self):
         with pytest.raises(TypeError):
-            InventoryHistory(ingredient=make_ingredient(), change=100) 
+            InventoryHistory(ingredient="원두", change=100, reason="RESTOCK")
+
+    def test_change_must_be_int(self):
+        with pytest.raises(TypeError):
+            InventoryHistory(ingredient=Ingredient("원두"), change="100", reason="RESTOCK")
+
+    def test_change_must_not_be_bool(self):
+        with pytest.raises(TypeError):
+            InventoryHistory(ingredient=Ingredient("원두"), change=True, reason="RESTOCK")
+
+    def test_change_cannot_be_zero(self):
+        with pytest.raises(ValueError):
+            InventoryHistory(ingredient=Ingredient("원두"), change=0, reason="RESTOCK")
+
+    def test_reason_must_be_known_value(self):
+        with pytest.raises(ValueError):
+            InventoryHistory(ingredient=Ingredient("원두"), change=100, reason="너 뭐야")
+
+    def test_reason_is_required(self):
+        with pytest.raises(TypeError):
+            InventoryHistory(ingredient=Ingredient("원두"), change=100)
 
 
 class TestInventoryHistoryTimestamp:
