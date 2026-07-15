@@ -17,3 +17,6 @@ class InventoryItem:
     
     def decrease(self, quantity: Quantity) -> None:
         self.quantity = self.quantity.subtract(quantity)
+
+    def increase(self, quantity: Quantity) -> None:
+        self.quantity = self.quantity.add(quantity)
