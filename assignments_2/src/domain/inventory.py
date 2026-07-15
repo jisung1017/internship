@@ -88,12 +88,8 @@ class Inventory:
         if quantity.value == 0:
             raise ValueError("입고 수량은 0보다 커야 합니다.")
 
-        try:
-            item = self._find_item(ingredient)
-            item.increase(quantity)
-        except OutOfStockError:
-            self.items.append(InventoryItem(ingredient, quantity))
-
+        item = self._find_item(ingredient)  # 없으면 OutOfStockError
+        item.increase(quantity)
         self._record(ingredient, quantity.value, "RESTOCK")
 
     def get_quantity(self, ingredient: Ingredient) -> Quantity:
