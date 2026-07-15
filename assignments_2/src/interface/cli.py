@@ -54,6 +54,9 @@ class CLI:
 
         choice = self._input_menu_choice(len(menus))
 
+        if choice is None:  # 개발자 모드로 빠진 경우
+            return
+
         if choice == 0:
             self.session.end()
             return
@@ -77,10 +80,59 @@ class CLI:
         print(f"{len(menus) + 1}. 장바구니\t\t(잔액: {self.session.get_balance().amount}원)")
         print("0. 종료")
 
-    def _input_menu_choice(self, menu_count: int) -> int:
+    def _input_menu_choice(self, menu_count: int) -> int | None:
         while True:
+            raw = input(">> 메뉴 선택: ")
+
+            if raw == "77":
+                self._run_developer_mode()
+                return None
+
             try:
-                return parse_menu_choice(input(">> 메뉴 선택: "), menu_count)
+                return parse_menu_choice(raw, menu_count)
+            except ValueError:
+                print("잘못된 입력입니다. 다시 입력해주세요.")
+
+    # ---------- 개발자 모드 ----------
+
+    def _run_developer_mode(self) -> None:
+        print("\n=========== [개발자 모드] ===========")
+
+        while True:
+            self._print_inventory_status()
+            raw = input(">> 입고할 재료명 입력 (종료: 0): ")
+
+            if raw == "0":
+                print("개발자 모드를 종료합니다.\n")
+                return
+
+            quantity = self._input_restock_quantity()
+
+            try:
+                self.session.restock(raw, quantity)
+            except (ValueError, OutOfStockError):
+                print("등록되지 않은 재료이거나 잘못된 입력입니다.\n")
+                continue
+
+            print(f"{raw.strip()} {quantity.value}개 입고 완료.\n")
+
+    def _print_inventory_status(self) -> None:
+        inventory = self.session.get_inventory()
+
+        print("\n[재고 현황]")
+        for item in inventory.items:
+            print(f"- {item.ingredient.name}: {item.quantity.value}")
+
+        print("\n[최근 이력]")
+        for record in inventory.history[-5:]:
+            sign = "+" if record.change > 0 else ""
+            print(f"  {record.timestamp:%H:%M:%S} {record.ingredient.name} {sign}{record.change} ({record.reason})")
+
+    def _input_restock_quantity(self) -> Quantity:
+        while True:
+            raw = input(">> 입고 수량: ")
+            try:
+                return Quantity(int(raw))
             except ValueError:
                 print("잘못된 입력입니다. 다시 입력해주세요.")
 

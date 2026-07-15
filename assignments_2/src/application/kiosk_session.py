@@ -5,6 +5,8 @@ from src.application.order_service import OrderService
 from src.application.pending_order import PendingOrder
 from src.domain.cart import Cart
 from src.domain.exceptions import InsufficientBalanceError, OutOfStockError
+from src.domain.ingredient import Ingredient
+from src.domain.inventory import Inventory
 from src.domain.menu import Menu
 from src.domain.money import Money
 from src.domain.option import Option
@@ -116,3 +118,11 @@ class KioskSession:
 
     def end(self) -> None:
         self.step = StepType.END
+
+    # ---------- 개발자 모드 ----------
+
+    def get_inventory(self) -> Inventory:
+        return self.order_service.inventory
+
+    def restock(self, ingredient_name: str, quantity: Quantity) -> None:
+        self.order_service.inventory.restock(Ingredient(ingredient_name), quantity)
