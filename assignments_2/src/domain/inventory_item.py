@@ -16,7 +16,12 @@ class InventoryItem:
             raise TypeError("InventoryItem 의 quantity 는 Quantity 여야 한다.")
     
     def decrease(self, quantity: Quantity) -> None:
+        if not isinstance(quantity, Quantity):
+            raise TypeError("quantity 는 Quantity 여야한다. ")
+
         self.quantity = self.quantity.subtract(quantity)
 
     def increase(self, quantity: Quantity) -> None:
+        if not isinstance(quantity, Quantity):
+            raise TypeError("quantity 는 Quantity여야한다.")
         self.quantity = self.quantity.add(quantity)
