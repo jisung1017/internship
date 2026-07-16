@@ -1,14 +1,21 @@
 services:
-  db:
+  postgres:
     image: postgres:17
+
+    container_name: kiosk-db
+
+    restart: unless-stopped
+
     environment:
-      POSTGRES_USER: cafe
-      POSTGRES_PASSWORD: cafe
-      POSTGRES_DB: cafe
+      POSTGRES_USER: kiosk
+      POSTGRES_PASSWORD: kiosk
+      POSTGRES_DB: kiosk
+
     ports:
       - "5432:5432"
+
     volumes:
-      - cafe_pgdata:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
 
 volumes:
-  cafe_pgdata:
+  postgres-data:
