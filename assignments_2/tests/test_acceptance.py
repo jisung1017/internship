@@ -264,7 +264,7 @@ class TestDevelopmentModeValidation:
         """
         cli = build_cli(
             monkeypatch,
-            inputs=["99", "원두", "50", "원두", "30", "0", "0"],
+            inputs=["77", "원두", "50", "원두", "30", "0", "0"],
             balance=10000,
             bean_quantity=1000,
         )
