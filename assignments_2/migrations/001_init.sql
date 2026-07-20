@@ -93,6 +93,8 @@ CREATE TABLE option_group (
     min_select INTEGER NOT NULL,
     max_select INTEGER NOT NULL,
 
+    selection_mode TEXT NOT NULL,
+
     CONSTRAINT pk_option_group
         PRIMARY KEY (id),
 
@@ -105,12 +107,14 @@ CREATE TABLE option_group (
     CONSTRAINT ck_option_group_range
         CHECK (min_select <= max_select),
 
+    CONSTRAINT ck_option_group_selection_mode
+        CHECK (selection_mode IN ('choice', 'count')),
+
     CONSTRAINT fk_option_group_menu
         FOREIGN KEY (menu_id)
         REFERENCES menu(id)
         ON DELETE CASCADE
 );
-
 -- ============================================================
 -- Option Item
 -- ============================================================

@@ -77,13 +77,15 @@ INSERT INTO option_group (
     menu_id,
     name,
     min_select,
-    max_select
+    max_select,
+    selection_mode
 )
 SELECT
     id,
     '추가 옵션',
     0,
-    3
+    3,
+    'choice'
 FROM menu;
 
 -- ============================================================
