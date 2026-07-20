@@ -1,0 +1,67 @@
+from psycopg import Connection
+
+from src.domain.ingredient import Ingredient
+from src.domain.inventory import Inventory
+from src.domain.inventory_item import InventoryItem
+from src.domain.quantity import Quantity
+from src.domain.repositories.inventory_repository import InventoryRepository
+
+
+class PostgresInventoryRepository(InventoryRepository):
+    def __init__(
+        self,
+        connection: Connection,
+    ) -> None:
+        self._connection = connection
+
+    def load(self) -> Inventory:
+        with self._connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    i.name,
+                    inv.quantity
+                FROM inventory AS inv
+                JOIN ingredient AS i
+                    ON i.id = inv.ingredient_id
+                ORDER BY i.id
+                """
+            )
+
+            rows = cursor.fetchall()
+
+        return Inventory(
+            items=[
+                InventoryItem(
+                    ingredient=Ingredient(
+                        name=row["name"],
+                    ),
+                    quantity=Quantity(
+                        row["quantity"],
+                    ),
+                )
+                for row in rows
+            ]
+        )
+
+    def save(
+        self,
+        inventory: Inventory,
+    ) -> None:
+        with self._connection.cursor() as cursor:
+            for item in inventory.items:
+                cursor.execute(
+                    """
+                    UPDATE inventory
+                    SET quantity = %(quantity)s
+                    WHERE ingredient_id = (
+                        SELECT id
+                        FROM ingredient
+                        WHERE name = %(name)s
+                    )
+                    """,
+                    {
+                        "name": item.ingredient.name,
+                        "quantity": item.quantity.value,
+                    },
+                )
