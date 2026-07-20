@@ -1,8 +1,11 @@
 from psycopg import Connection
 
+from src.domain.ingredient import Ingredient
 from src.domain.menu import Menu
 from src.domain.money import Money
+from src.domain.quantity import Quantity
 from src.domain.recipe import Recipe
+from src.domain.recipe_item import RecipeItem
 from src.domain.repositories.menu_repository import MenuRepository
 
 
@@ -14,6 +17,8 @@ class PostgresMenuRepository(MenuRepository):
         self._connection = connection
 
     def find_all(self) -> list[Menu]:
+        recipe_items = self._load_recipe_items()
+
         with self._connection.cursor() as cursor:
             cursor.execute(
                 """
@@ -31,7 +36,9 @@ class PostgresMenuRepository(MenuRepository):
         return [
             Menu(
                 name=row["name"],
-                price=Money(row["price"]),
+                price=Money(
+                    row["price"],
+                ),
                 recipe=Recipe(),
                 option_groups=[],
             )
@@ -42,6 +49,8 @@ class PostgresMenuRepository(MenuRepository):
         self,
         name: str,
     ) -> Menu | None:
+        recipe_items = self._load_recipe_items()
+
         with self._connection.cursor() as cursor:
             cursor.execute(
                 """
@@ -64,7 +73,51 @@ class PostgresMenuRepository(MenuRepository):
 
         return Menu(
             name=row["name"],
-            price=Money(row["price"]),
+            price=Money(
+                row["price"],
+            ),
             recipe=Recipe(),
             option_groups=[],
         )
+
+    def _load_recipe_items(
+        self,
+    ) -> dict[int, list[RecipeItem]]:
+        with self._connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    ri.menu_id,
+                    i.name,
+                    ri.quantity
+                FROM recipe_item AS ri
+                JOIN ingredient AS i
+                    ON i.id = ri.ingredient_id
+                ORDER BY
+                    ri.menu_id,
+                    i.id
+                """
+            )
+
+            rows = cursor.fetchall()
+
+        recipe_items: dict[int, list[RecipeItem]] = {}
+
+        for row in rows:
+            menu_id = row["menu_id"]
+
+            recipe_items.setdefault(
+                menu_id,
+                [],
+            ).append(
+                RecipeItem(
+                    ingredient=Ingredient(
+                        name=row["name"],
+                    ),
+                    quantity=Quantity(
+                        row["quantity"],
+                    ),
+                )
+            )
+
+        return recipe_items
