@@ -121,7 +121,7 @@ class CLI:
 
         print("\n[재고 현황]")
         for item in inventory.items:
-            print(f"- {item.ingredient.name}: {item.quantity.value}")
+            print(f"- {item.ingredient.name}: {item.quantity.value} {item.ingredient.unit}")
 
         print("\n[최근 이력]")
         for record in inventory.history[-5:]:

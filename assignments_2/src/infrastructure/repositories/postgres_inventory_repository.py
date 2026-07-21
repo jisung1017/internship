@@ -20,6 +20,7 @@ class PostgresInventoryRepository(InventoryRepository):
                 """
                 SELECT
                     i.name,
+                    i.unit,
                     inv.quantity
                 FROM inventory AS inv
                 JOIN ingredient AS i
@@ -35,6 +36,7 @@ class PostgresInventoryRepository(InventoryRepository):
                 InventoryItem(
                     ingredient=Ingredient(
                         name=row["name"],
+                        unit=row["unit"],
                     ),
                     quantity=Quantity(
                         row["quantity"],
