@@ -65,3 +65,8 @@ class PostgresInventoryRepository(InventoryRepository):
                         "quantity": item.quantity.value,
                     },
                 )
+
+                if cursor.rowcount != 1:
+                    raise RuntimeError(
+                        f"재고를 찾을 수 없습니다: {item.ingredient.name!r}"
+                    )
