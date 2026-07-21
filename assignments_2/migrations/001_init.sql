@@ -7,6 +7,7 @@ BEGIN;
 CREATE TABLE ingredient (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
     name TEXT NOT NULL,
+    unit TEXT NOT NULL DEFAULT '',
 
     CONSTRAINT pk_ingredient
         PRIMARY KEY (id),
