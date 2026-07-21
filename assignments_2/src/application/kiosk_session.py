@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
+from src.application.inventory_persister import InventoryPersister
 from src.application.order_service import OrderService
 from src.application.pending_order import PendingOrder
 from src.domain.cart import Cart
@@ -28,6 +29,7 @@ class StepType(Enum):
 class KioskSession:
     menus: list[Menu]
     order_service: OrderService
+    inventory_persister: InventoryPersister | None = None
     cart: Cart = field(default_factory=Cart)
     step: StepType = StepType.MENU
     pending_order: PendingOrder | None = None
@@ -114,6 +116,7 @@ class KioskSession:
             self.go_to_menu()
             raise
 
+        self._persist_inventory()
         self.step = StepType.COMPLETE
 
     def end(self) -> None:
@@ -126,3 +129,8 @@ class KioskSession:
 
     def restock(self, ingredient_name: str, quantity: Quantity) -> None:
         self.order_service.inventory.restock(Ingredient(ingredient_name), quantity)
+        self._persist_inventory()
+
+    def _persist_inventory(self) -> None:
+        if self.inventory_persister is not None:
+            self.inventory_persister.persist(self.order_service.inventory)
