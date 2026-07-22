@@ -1,24 +1,19 @@
 import threading
 import time
+import os
 
 import psycopg
 import pytest
 from psycopg.rows import dict_row
-
+from src.infrastructure.db import DEFAULT_DATABASE_URL
 from src.infrastructure.repositories.postgres_inventory_repository import (
     PostgresInventoryRepository,
 )
 
 
 def _connect() -> psycopg.Connection:
-    return psycopg.connect(
-        host="localhost",
-        port=5432,
-        dbname="kiosk",
-        user="kiosk",
-        password="kiosk",
-        row_factory=dict_row,
-    )
+    dsn = os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
+    return psycopg.connect(dsn, row_factory=dict_row)
 
 
 @pytest.fixture
