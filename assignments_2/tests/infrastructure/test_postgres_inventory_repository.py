@@ -41,6 +41,30 @@ class TestLoad:
         assert item.ingredient.unit == "g"
 
 
+class TestLoadForUpdate:
+    def test_returns_only_requested_ingredients(self, connection):
+        _insert_ingredient_with_stock(connection, "테스트원두A", 500, unit="g")
+        _insert_ingredient_with_stock(connection, "테스트원두B", 300, unit="g")
+
+        inventory = PostgresInventoryRepository(connection).load_for_update(
+            ["테스트원두A"]
+        )
+
+        names = {item.ingredient.name for item in inventory.items}
+        assert names == {"테스트원두A"}
+
+        item = inventory.items[0]
+        assert item.quantity == Quantity(500)
+        assert item.ingredient.unit == "g"
+
+    def test_returns_empty_inventory_when_no_match(self, connection):
+        inventory = PostgresInventoryRepository(connection).load_for_update(
+            ["존재안하는재료"]
+        )
+
+        assert inventory.items == []
+
+
 class TestSave:
     def test_updates_quantity_in_db(self, connection):
         _insert_ingredient_with_stock(connection, "테스트재료", 500)
