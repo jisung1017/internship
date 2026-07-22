@@ -46,6 +46,43 @@ class PostgresInventoryRepository(InventoryRepository):
             ]
         )
 
+    def load_for_update(self, ingredient_names: list[str]) -> Inventory:
+        with self._connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    i.name,
+                    i.unit,
+                    inv.quantity
+                FROM inventory AS inv
+                JOIN ingredient AS i
+                    ON i.id = inv.ingredient_id
+                WHERE i.name = ANY(%(names)s)
+                ORDER BY i.id
+                FOR UPDATE OF inv
+                """,
+                {
+                    "names": ingredient_names,
+                },
+            )
+
+            rows = cursor.fetchall()
+
+        return Inventory(
+            items=[
+                InventoryItem(
+                    ingredient=Ingredient(
+                        name=row["name"],
+                        unit=row["unit"],
+                    ),
+                    quantity=Quantity(
+                        row["quantity"],
+                    ),
+                )
+                for row in rows
+            ]
+        )
+
     def save(
         self,
         inventory: Inventory,
