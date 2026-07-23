@@ -100,28 +100,55 @@ class CLI:
 
         while True:
             self._print_inventory_status()
-            raw = input(">> 입고할 재료명 입력 (종료: 0): ")
+            print("\n1. 재고 추가")
+            print("2. 판매 내역")
+            print("0. 종료")
+            raw = input(">> 선택: ")
 
             if raw == "0":
                 print("개발자 모드를 종료합니다.\n")
                 return
 
-            quantity = self._input_restock_quantity()
-
-            try:
-                self.session.restock(raw, quantity)
-            except (ValueError, OutOfStockError):
-                print("등록되지 않은 재료이거나 잘못된 입력입니다.\n")
+            if raw == "2":
+                self._print_today_sales()
                 continue
 
-            print(f"{raw.strip()} {quantity.value}개 입고 완료.\n")
+            if raw == "1":
+                raw_ingredient = input(">> 입고할 재료명 입력: ")
+                quantity = self._input_restock_quantity()
+
+                try:
+                    self.session.restock(raw_ingredient, quantity)
+                except (ValueError, OutOfStockError):
+                    print("등록되지 않은 재료이거나 잘못된 입력입니다.\n")
+                    continue
+
+                print(f"{raw_ingredient.strip()} {quantity.value}개 입고 완료.\n")
+
+    def _print_today_sales(self) -> None:
+        records = self.session.get_today_orders()
+
+        print("\n[오늘 판매 내역]")
+        if not records:
+            print("  (오늘 판매 내역이 없습니다)")
+
+        for record in records:
+            items_text = ", ".join(
+                f"{item.menu_name} x{item.quantity}" for item in record.items
+            )
+            print(
+                f"  #{record.id} {record.created_at:%H:%M:%S} "
+                f"{items_text} = {record.total_price.amount}원"
+            )
+
+        print(f"\n총 매출: {self.session.get_today_sales_total().amount}원\n")
 
     def _print_inventory_status(self) -> None:
         inventory = self.session.get_inventory()
 
         print("\n[재고 현황]")
         for item in inventory.items:
-            print(f"- {item.ingredient.name}: {item.quantity.value} {item.ingredient.unit}")
+            print(f"- {item.ingredient.name}: {item.quantity.value}{item.ingredient.unit}")
 
         print("\n[최근 이력]")
         for record in inventory.history[-5:]:

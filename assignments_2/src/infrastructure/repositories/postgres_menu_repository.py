@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 from psycopg import Connection
 
 from src.domain.ingredient import Ingredient
@@ -8,7 +10,26 @@ from src.domain.option_group import OptionGroup
 from src.domain.quantity import Quantity
 from src.domain.recipe import Recipe
 from src.domain.recipe_item import RecipeItem
-from src.domain.repositories.menu_repository import MenuRepository
+
+
+class MenuRepository(ABC):
+    @abstractmethod
+    def find_all(self) -> list[Menu]:
+        """전체 메뉴를 조회한다."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def find_by_name(self, name: str) -> Menu | None:
+        """이름으로 메뉴를 조회한다."""
+        raise NotImplementedError
+
+
+class PostgresMenuRepository(MenuRepository):
+    def __init__(
+        self,
+        connection: Connection,
+    ) -> None:
+        self._connection = connection
 
 
 class PostgresMenuRepository(MenuRepository):
