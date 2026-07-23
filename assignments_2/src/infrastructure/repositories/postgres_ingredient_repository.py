@@ -1,7 +1,20 @@
+from abc import ABC, abstractmethod
+
 from psycopg import Connection
 
 from src.domain.ingredient import Ingredient
-from src.domain.repositories.ingredient_repository import IngredientRepository
+
+
+class IngredientRepository(ABC):
+    @abstractmethod
+    def find_all(self) -> list[Ingredient]:
+        """모든 재료를 조회한다."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def find_by_name(self, name: str) -> Ingredient | None:
+        """이름으로 재료를 조회한다."""
+        raise NotImplementedError
 
 
 class PostgresIngredientRepository(IngredientRepository):
