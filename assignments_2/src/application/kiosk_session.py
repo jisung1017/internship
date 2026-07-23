@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 
 from src.application.inventory_persister import InventoryPersister
+from src.application.order_history_reader import OrderHistoryReader
+from src.application.order_persister import OrderPersister
 from src.application.order_service import OrderService
 from src.application.pending_order import PendingOrder
 from src.domain.cart import Cart
@@ -12,6 +14,7 @@ from src.domain.menu import Menu
 from src.domain.money import Money
 from src.domain.option import Option
 from src.domain.option_group import OptionGroup
+from src.domain.order_record import OrderRecord
 from src.domain.quantity import Quantity
 
 
@@ -30,6 +33,8 @@ class KioskSession:
     menus: list[Menu]
     order_service: OrderService
     inventory_persister: InventoryPersister | None = None
+    order_persister: OrderPersister | None = None
+    order_history_reader: OrderHistoryReader | None = None
     cart: Cart = field(default_factory=Cart)
     step: StepType = StepType.MENU
     pending_order: PendingOrder | None = None
@@ -111,12 +116,15 @@ class KioskSession:
 
     def checkout(self) -> None:
         try:
-            self.order_service.checkout(self.cart)
+            order = self.order_service.checkout(self.cart)
         except (OutOfStockError, InsufficientBalanceError):
             self.go_to_menu()
             raise
 
-        self._persist_inventory()
+        if self.order_persister is not None:
+            # 주문 이력 저장 + 재고 저장을 하나의 트랜잭션으로 원자적으로 처리
+            self.order_persister.persist(order, self.order_service.inventory)
+
         self.step = StepType.COMPLETE
 
     def end(self) -> None:
@@ -130,6 +138,20 @@ class KioskSession:
     def restock(self, ingredient_name: str, quantity: Quantity) -> None:
         self.order_service.inventory.restock(Ingredient(ingredient_name), quantity)
         self._persist_inventory()
+
+    def get_today_orders(self) -> list[OrderRecord]:
+        if self.order_history_reader is None:
+            return []
+
+        return self.order_history_reader.find_today()
+
+    def get_today_sales_total(self) -> Money:
+        total = Money(0)
+
+        for record in self.get_today_orders():
+            total = total.add(record.total_price)
+
+        return total
 
     def _persist_inventory(self) -> None:
         if self.inventory_persister is not None:
