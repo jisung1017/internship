@@ -1,9 +1,30 @@
+from abc import ABC, abstractmethod
+
 from psycopg import Connection
 
 from src.domain.money import Money
 from src.domain.order import Order
 from src.domain.order_record import OrderRecord, OrderRecordItem
-from src.domain.repositories.order_repository import OrderRepository
+
+
+class OrderRepository(ABC):
+    @abstractmethod
+    def save(self, order: Order) -> None:
+        """주문을 저장한다."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def find_today(self) -> list[OrderRecord]:
+        """오늘(자정 이후) 저장된 주문 이력을 조회한다."""
+        raise NotImplementedError
+
+
+class PostgresOrderRepository(OrderRepository):
+    def __init__(
+        self,
+        connection: Connection,
+    ) -> None:
+        self._connection = connection
 
 
 class PostgresOrderRepository(OrderRepository):
