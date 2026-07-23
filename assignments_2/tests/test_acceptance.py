@@ -221,7 +221,7 @@ class TestDevelopmentModeValidation:
         """
         cli = build_cli(
             monkeypatch,
-            inputs=["77", "원두", "100", "0", "0"],
+            inputs=["77", "1", "원두", "100", "0", "0"],
             balance=10000,
             bean_quantity=1000,
         )
@@ -242,7 +242,7 @@ class TestDevelopmentModeValidation:
         """
         cli = build_cli(
             monkeypatch,
-            inputs=["77", "우유", "50", "0", "0"],
+            inputs=["77", "1", "우유", "50", "0", "0"],
             balance=10000,
             bean_quantity=1000,
         )
@@ -264,7 +264,7 @@ class TestDevelopmentModeValidation:
         """
         cli = build_cli(
             monkeypatch,
-            inputs=["77", "원두", "50", "원두", "30", "0", "0"],
+            inputs=["77", "1", "원두", "50", "1", "원두", "30", "0", "0"],
             balance=10000,
             bean_quantity=1000,
         )
