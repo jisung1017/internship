@@ -12,6 +12,12 @@ from src.infrastructure.repositories.postgres_inventory_repository import (
 from src.infrastructure.repositories.postgres_menu_repository import (
     PostgresMenuRepository,
 )
+from src.infrastructure.repositories.postgres_order_history_reader import (
+    PostgresOrderHistoryReader,
+)
+from src.infrastructure.repositories.postgres_order_persister import (
+    PostgresOrderPersister,
+)
 from src.interface.cli import CLI
 
 
@@ -28,6 +34,8 @@ def main() -> None:
         menus=menus,
         order_service=order_service,
         inventory_persister=PostgresInventoryPersister(database),
+        order_persister=PostgresOrderPersister(database),
+        order_history_reader=PostgresOrderHistoryReader(database),
     )
 
     CLI(session).run()
