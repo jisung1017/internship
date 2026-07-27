@@ -18,20 +18,21 @@ from src.infrastructure.repositories.postgres_order_history_reader import (
 from src.infrastructure.repositories.postgres_order_persister import (
     PostgresOrderPersister,
 )
+from src.infrastructure.repositories.postgres_kiosk_loader import (
+    PostgresKioskStateLoader,
+)
 from src.interface.cli import CLI
 
 
 def main() -> None:
     database = Database()
 
-    with database.transaction() as connection:
-        menus = PostgresMenuRepository(connection).find_all()
-        inventory = PostgresInventoryRepository(connection).load()
+    state = PostgresKioskStateLoader(database).load()
 
-    payment = Payment(balance=Money(10000))
-    order_service = OrderService(payment, inventory)
+    payment = Payment(balance=Money(100000000))
+    order_service = OrderService(payment, state.inventory)
     session = KioskSession(
-        menus=menus,
+        menus=state.menus,
         order_service=order_service,
         inventory_persister=PostgresInventoryPersister(database),
         order_persister=PostgresOrderPersister(database),
