@@ -1,5 +1,6 @@
 import time
 
+from src.application.kiosk_admin_service import KioskAdminService
 from src.application.kiosk_session import KioskSession, StepType
 from src.domain.cart import Cart
 from src.domain.cart_item import CartItem
@@ -28,8 +29,9 @@ def parse_quantity(raw_input: str) -> Quantity:
 
 
 class CLI:
-    def __init__(self, session: KioskSession):
+    def __init__(self, session: KioskSession, admin_service: KioskAdminService):
         self.session = session
+        self.admin_service = admin_service
         self.handlers = {
             StepType.MENU: self._show_menu_screen,
             StepType.OPTION: self._show_option_screen,
@@ -118,7 +120,7 @@ class CLI:
                 quantity = self._input_restock_quantity()
 
                 try:
-                    self.session.restock(raw_ingredient, quantity)
+                    self.admin_service.restock(raw_ingredient, quantity)
                 except (ValueError, OutOfStockError):
                     print("등록되지 않은 재료이거나 잘못된 입력입니다.\n")
                     continue
@@ -126,7 +128,7 @@ class CLI:
                 print(f"{raw_ingredient.strip()} {quantity.value}개 입고 완료.\n")
 
     def _print_today_sales(self) -> None:
-        records = self.session.get_today_orders()
+        records = self.admin_service.get_today_orders()
 
         print("\n[오늘 판매 내역]")
         if not records:
@@ -141,10 +143,10 @@ class CLI:
                 f"{items_text} = {record.total_price.amount}원"
             )
 
-        print(f"\n총 매출: {self.session.get_today_sales_total().amount}원\n")
+        print(f"\n총 매출: {self.admin_service.get_today_sales_total().amount}원\n")
 
     def _print_inventory_status(self) -> None:
-        inventory = self.session.get_inventory()
+        inventory = self.admin_service.get_inventory()
 
         print("\n[재고 현황]")
         for item in inventory.items:
