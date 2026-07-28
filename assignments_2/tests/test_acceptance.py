@@ -14,6 +14,8 @@ from src.domain.quantity import Quantity
 from src.domain.recipe import Recipe
 from src.domain.recipe_item import RecipeItem
 from src.interface.cli import CLI
+from src.application.checkout_service import CheckoutService
+from src.application.kiosk_admin_service import KioskAdminService
 
 
 def build_americano() -> Menu:
@@ -71,9 +73,15 @@ def build_cli(monkeypatch, inputs: list[str], balance: int, bean_quantity: int) 
     inventory = build_inventory(bean_quantity)
     payment = Payment(balance=Money(balance))
     order_service = OrderService(payment, inventory)
-    session = KioskSession(menus=menus, order_service=order_service)
+    checkout_service = CheckoutService(order_service)
+    admin_service = KioskAdminService(order_service)
+    session = KioskSession(
+        menus=menus,
+        order_service=order_service,
+        checkout_service=checkout_service,
+    )
 
-    return CLI(session)
+    return CLI(session, admin_service)
 
 
 class TestSuccessfulCheckout:
