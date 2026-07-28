@@ -1,20 +1,15 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
-from src.application.inventory_persister import InventoryPersister
-from src.application.order_history_reader import OrderHistoryReader
-from src.application.order_persister import OrderPersister
+from src.application.checkout_service import CheckoutService
 from src.application.order_service import OrderService
 from src.application.pending_order import PendingOrder
 from src.domain.cart import Cart
 from src.domain.exceptions import InsufficientBalanceError, OutOfStockError
-from src.domain.ingredient import Ingredient
-from src.domain.inventory import Inventory
 from src.domain.menu import Menu
 from src.domain.money import Money
 from src.domain.option import Option
 from src.domain.option_group import OptionGroup
-from src.domain.order_record import OrderRecord
 from src.domain.quantity import Quantity
 
 
@@ -30,11 +25,15 @@ class StepType(Enum):
 
 @dataclass
 class KioskSession:
+    """화면 흐름(Step 전이)과 장바구니 담기 흐름만 책임진다.
+
+    실제 결제 유스케이스는 CheckoutService에, 관리자 모드는
+    KioskAdminService에 위임한다 (이 클래스는 그 둘을 전혀 모른다).
+    """
+
     menus: list[Menu]
     order_service: OrderService
-    inventory_persister: InventoryPersister | None = None
-    order_persister: OrderPersister | None = None
-    order_history_reader: OrderHistoryReader | None = None
+    checkout_service: CheckoutService
     cart: Cart = field(default_factory=Cart)
     step: StepType = StepType.MENU
     pending_order: PendingOrder | None = None
@@ -116,43 +115,12 @@ class KioskSession:
 
     def checkout(self) -> None:
         try:
-            order = self.order_service.checkout(self.cart)
+            self.checkout_service.checkout(self.cart)
         except (OutOfStockError, InsufficientBalanceError):
             self.go_to_menu()
             raise
-
-        if self.order_persister is not None:
-            # 주문 이력 저장 + 재고 저장을 하나의 트랜잭션으로 원자적으로 처리
-            self.order_persister.persist(order, self.order_service.inventory)
 
         self.step = StepType.COMPLETE
 
     def end(self) -> None:
         self.step = StepType.END
-
-    # ---------- 개발자 모드 ----------
-
-    def get_inventory(self) -> Inventory:
-        return self.order_service.inventory
-
-    def restock(self, ingredient_name: str, quantity: Quantity) -> None:
-        self.order_service.inventory.restock(Ingredient(ingredient_name), quantity)
-        self._persist_inventory()
-
-    def get_today_orders(self) -> list[OrderRecord]:
-        if self.order_history_reader is None:
-            return []
-
-        return self.order_history_reader.find_today()
-
-    def get_today_sales_total(self) -> Money:
-        total = Money(0)
-
-        for record in self.get_today_orders():
-            total = total.add(record.total_price)
-
-        return total
-
-    def _persist_inventory(self) -> None:
-        if self.inventory_persister is not None:
-            self.inventory_persister.persist(self.order_service.inventory)
