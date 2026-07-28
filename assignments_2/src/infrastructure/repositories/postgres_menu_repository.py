@@ -31,14 +31,6 @@ class PostgresMenuRepository(MenuRepository):
     ) -> None:
         self._connection = connection
 
-
-class PostgresMenuRepository(MenuRepository):
-    def __init__(
-        self,
-        connection: Connection,
-    ) -> None:
-        self._connection = connection
-
     def find_all(self) -> list[Menu]:
         recipe_items = self._load_recipe_items()
         option_groups = self._load_option_groups()
