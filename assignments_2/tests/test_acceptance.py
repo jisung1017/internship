@@ -236,7 +236,7 @@ class TestDevelopmentModeValidation:
 
         cli.run()
 
-        inventory = cli.session.get_inventory()
+        inventory = cli.admin_service.get_inventory()
         assert inventory.get_quantity(Ingredient("원두")) == Quantity(1100)
         assert len(inventory.history) == 1
         assert inventory.history[0].change == 100
@@ -260,7 +260,7 @@ class TestDevelopmentModeValidation:
         captured = capsys.readouterr()
         assert "등록되지 않은 재료" in captured.out
 
-        inventory = cli.session.get_inventory()
+        inventory = cli.admin_service.get_inventory()
         assert inventory.get_quantity(Ingredient("원두")) == Quantity(1000)
         assert len(inventory.history) == 0
 
@@ -279,6 +279,6 @@ class TestDevelopmentModeValidation:
 
         cli.run()
 
-        inventory = cli.session.get_inventory()
+        inventory = cli.admin_service.get_inventory()
         assert inventory.get_quantity(Ingredient("원두")) == Quantity(1080)
         assert [h.change for h in inventory.history] == [50, 30]
