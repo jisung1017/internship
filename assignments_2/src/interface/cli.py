@@ -1,8 +1,8 @@
+from enum import Enum, auto
 import time
 
 from src.application.cart_service import CartService
 from src.application.kiosk_admin_service import KioskAdminService
-from src.application.kiosk_session import StepType  # StepType만 사용하거나 cli.py 내부에 정의
 from src.application.order_application_service import OrderApplicationService
 from src.application.pending_order import PendingOrder
 from src.domain.cart import Cart
@@ -15,6 +15,17 @@ from src.domain.option import Option
 from src.domain.option_group import OptionGroup
 from src.domain.payment import Payment
 from src.domain.quantity import Quantity
+
+
+class StepType(Enum):
+    """CLI 화면 흐름 관리를 위한 전용 상태 Enum입니다."""
+    MENU = auto()
+    OPTION = auto()
+    QUANTITY = auto()
+    CART = auto()
+    PAYMENT = auto()
+    COMPLETE = auto()
+    END = auto()
 
 
 def parse_menu_choice(raw_input: str, menu_count: int) -> int:
@@ -52,7 +63,7 @@ class CLI:
         self.order_app_service = order_app_service
         self.admin_service = admin_service
 
-        # CLI 어댑터 내부의 UI 전이 상태
+        # CLI 어댑터 내부에서 관리하는 UI 전이 상태
         self.cart = Cart()
         self.step = StepType.MENU
         self.pending_order: PendingOrder | None = None
