@@ -1,12 +1,19 @@
 import time
 
+from src.application.cart_service import CartService
 from src.application.kiosk_admin_service import KioskAdminService
-from src.application.kiosk_session import KioskSession, StepType
+from src.application.kiosk_session import StepType  # StepType만 사용하거나 cli.py 내부에 정의
+from src.application.order_application_service import OrderApplicationService
+from src.application.pending_order import PendingOrder
 from src.domain.cart import Cart
 from src.domain.cart_item import CartItem
 from src.domain.exceptions import InsufficientBalanceError, OutOfStockError
+from src.domain.inventory import Inventory
+from src.domain.menu import Menu
+from src.domain.money import Money
 from src.domain.option import Option
 from src.domain.option_group import OptionGroup
+from src.domain.payment import Payment
 from src.domain.quantity import Quantity
 
 
@@ -29,9 +36,27 @@ def parse_quantity(raw_input: str) -> Quantity:
 
 
 class CLI:
-    def __init__(self, session: KioskSession, admin_service: KioskAdminService):
-        self.session = session
+    def __init__(
+        self,
+        menus: list[Menu],
+        payment: Payment,
+        inventory: Inventory,
+        cart_service: CartService,
+        order_app_service: OrderApplicationService,
+        admin_service: KioskAdminService,
+    ):
+        self.menus = menus
+        self.payment = payment
+        self.inventory = inventory
+        self.cart_service = cart_service
+        self.order_app_service = order_app_service
         self.admin_service = admin_service
+
+        # CLI 어댑터 내부의 UI 전이 상태
+        self.cart = Cart()
+        self.step = StepType.MENU
+        self.pending_order: PendingOrder | None = None
+
         self.handlers = {
             StepType.MENU: self._show_menu_screen,
             StepType.OPTION: self._show_option_screen,
@@ -42,8 +67,8 @@ class CLI:
         }
 
     def run(self) -> None:
-        while self.session.step != StepType.END:
-            self.handlers[self.session.step]()
+        while self.step != StepType.END:
+            self.handlers[self.step]()
 
         print("종료합니다.")
 
@@ -51,25 +76,26 @@ class CLI:
 
     def _show_menu_screen(self) -> None:
         time.sleep(0.7)
-        menus = self.session.menus
-        self._print_menu(menus)
+        self._print_menu(self.menus)
 
-        choice = self._input_menu_choice(len(menus))
+        choice = self._input_menu_choice(len(self.menus))
 
-        if choice is None:  # 개발자 모드로 빠진 경우
+        if choice is None:  # 개발자 모드 진입시
             return
 
         if choice == 0:
-            self.session.end()
+            self.step = StepType.END
             return
 
-        if choice == len(menus) + 1:
-            self.session.go_to_cart()
+        if choice == len(self.menus) + 1:
+            self.step = StepType.CART
             return
 
-        self.session.select_menu(choice)
+        menu = self.menus[choice - 1]
+        self.pending_order = PendingOrder(menu=menu)
+        self.step = StepType.OPTION if menu.option_groups else StepType.QUANTITY
 
-    def _print_menu(self, menus) -> None:
+    def _print_menu(self, menus: list[Menu]) -> None:
         print("=========== Cafe Mini Kiosk ===========\n")
         print("                [MENU]                 ")
         print("---------------------------------------")
@@ -79,7 +105,7 @@ class CLI:
             print(f"{i}. {menu.name}{tab}{menu.price.amount}원")
 
         print("---------------------------------------")
-        print(f"{len(menus) + 1}. 장바구니\t\t(잔액: {self.session.get_balance().amount}원)")
+        print(f"{len(menus) + 1}. 장바구니\t\t(잔액: {self.payment.balance.amount}원)")
         print("0. 종료")
 
     def _input_menu_choice(self, menu_count: int) -> int | None:
@@ -168,15 +194,23 @@ class CLI:
     # ---------- OPTION ----------
 
     def _show_option_screen(self) -> None:
-        menu = self.session.get_selected_menu()
-        group = self.session.current_option_group()
-        group_index = self.session.current_option_group_index()
+        if self.pending_order is None:
+            self.step = StepType.MENU
+            return
 
+        menu = self.pending_order.menu
+        group = self.pending_order.current_option_group()
+
+        if group is None:
+            self.step = StepType.QUANTITY
+            return
+
+        group_index = self.pending_order.group_index
         self._print_option_header(menu, group_index)
         raw = input(f"{self._group_label(group, group_index)}: ")
         self._handle_option_input(group, raw)
 
-    def _print_option_header(self, menu, group_index: int) -> None:
+    def _print_option_header(self, menu: Menu, group_index: int) -> None:
         if group_index != 0:
             return
         print(f"\n옵션({menu.name})")
@@ -192,13 +226,17 @@ class CLI:
         return f"{index}. {names}"
 
     def _handle_option_input(self, group: OptionGroup, raw: str) -> None:
+        if self.pending_order is None:
+            return
+
         try:
             selected = group.parse_selection(raw)
         except ValueError as e:
             print(f"잘못된 입력입니다. {e}")
             return
 
-        self.session.select_option_group(selected)
+        self.pending_order.select_current_option_group(selected)
+        self.step = StepType.QUANTITY if self.pending_order.is_option_selection_done() else StepType.OPTION
 
     # ---------- QUANTITY ----------
 
@@ -211,32 +249,44 @@ class CLI:
             print("잘못된 입력입니다. 다시 입력해주세요.")
             return
 
-        try:
-            self.session.select_quantity(quantity)
-        except ValueError as e:
-            print(f"잘못된 입력입니다. {e}")
+        if self.pending_order is None:
+            self.step = StepType.MENU
             return
 
+        try:
+            self.pending_order.set_quantity(quantity)
+            self.cart_service.add_item(
+                self.cart,
+                self.pending_order.menu,
+                self.pending_order.quantity,
+                self.pending_order.selected_options,
+            )
+        except ValueError as e:
+            print(f"잘못된 입력입니다. {e}")
+            self.pending_order = None
+            self.step = StepType.MENU
+            return
+
+        self.pending_order = None
+        self.step = StepType.MENU
         print("장바구니에 상품이 담겼습니다.\n")
 
     # ---------- CART ----------
 
     def _show_cart_screen(self) -> None:
-        cart = self.session.cart
-
-        if len(cart) == 0:
+        if len(self.cart) == 0:
             print("장바구니가 비어있습니다.\n")
-            self.session.go_to_menu()
+            self.step = StepType.MENU
             return
 
-        self._print_cart(cart)
+        self._print_cart(self.cart)
         choice = self._input_binary_choice()
 
         if choice == 1:
-            self.session.go_to_menu()
+            self.step = StepType.MENU
             return
 
-        self.session.go_to_payment()
+        self.step = StepType.PAYMENT
 
     def _print_cart(self, cart: Cart) -> None:
         print("\n[장바구니]")
@@ -279,29 +329,34 @@ class CLI:
     # ---------- PAYMENT ----------
 
     def _show_payment_screen(self) -> None:
-        cart = self.session.cart
-        print(f"\n총 금액: {cart.total_price().amount}원")
+        print(f"\n총 금액: {self.cart.total_price().amount}원")
         print("1. 결제 승인")
         print("2. 취소")
 
         choice = self._input_binary_choice()
 
         if choice == 2:
-            self.session.go_to_cart()
+            self.step = StepType.CART
             return
 
         self._checkout()
 
     def _checkout(self) -> None:
         try:
-            self.session.checkout()
+            self.order_app_service.place_order(self.cart, self.payment, self.inventory)
         except OutOfStockError:
             print("재고가 부족합니다. 장바구니를 초기화 합니다.\n")
+            self.step = StepType.MENU
+            return
         except InsufficientBalanceError:
             print("잔액이 부족합니다. 장바구니를 초기화 합니다.\n")
+            self.step = StepType.MENU
+            return
+
+        self.step = StepType.COMPLETE
 
     # ---------- COMPLETE ----------
 
     def _show_complete_screen(self) -> None:
-        print(f"결제에 성공했습니다! 남은 잔액: {self.session.get_balance().amount}원\n")
-        self.session.go_to_menu()
+        print(f"결제에 성공했습니다! 남은 잔액: {self.payment.balance.amount}원\n")
+        self.step = StepType.MENU
