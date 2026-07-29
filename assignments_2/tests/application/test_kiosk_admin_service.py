@@ -15,13 +15,11 @@ class TestKioskAdminService:
     def test_restock_updates_inventory_and_triggers_persister(self):
         """재고 입고 시 메모리 재고가 증가하고 InventoryPersister가 호출된다."""
         # Given
-        payment = Payment(balance=Money(10000))
         inventory = Inventory(items=[InventoryItem(Ingredient("원두"), Quantity(100))])
-        order_service = OrderService(payment, inventory)
 
         mock_persister = MagicMock()
         admin_service = KioskAdminService(
-            order_service=order_service,
+            inventory=inventory,
             inventory_persister=mock_persister,
         )
 
@@ -35,9 +33,7 @@ class TestKioskAdminService:
     def test_get_today_sales_total_calculates_sum_from_history_reader(self):
         """오늘의 주문 기록 목록을 기반으로 총매출 금액을 올바르게 계산한다."""
         # Given
-        payment = Payment(balance=Money(10000))
         inventory = Inventory(items=[])
-        order_service = OrderService(payment, inventory)
 
         mock_reader = MagicMock()
         mock_reader.find_today.return_value = [
@@ -56,7 +52,7 @@ class TestKioskAdminService:
         ]
 
         admin_service = KioskAdminService(
-            order_service=order_service,
+            inventory=inventory,
             order_history_reader=mock_reader,
         )
 
