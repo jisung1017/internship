@@ -2,7 +2,6 @@ from dataclasses import dataclass
 
 from src.application.inventory_persister import InventoryPersister
 from src.application.order_history_reader import OrderHistoryReader
-from src.application.order_service import OrderService
 from src.domain.ingredient import Ingredient
 from src.domain.inventory import Inventory
 from src.domain.money import Money
@@ -12,18 +11,17 @@ from src.domain.quantity import Quantity
 
 @dataclass
 class KioskAdminService:
+    """관리자(개발자) 모드 유스케이스 서비스입니다."""
 
-    # ---------- 개발자 모드 ----------
-
-    order_service: OrderService
+    inventory: Inventory
     inventory_persister: InventoryPersister | None = None
     order_history_reader: OrderHistoryReader | None = None
 
     def get_inventory(self) -> Inventory:
-        return self.order_service.inventory
+        return self.inventory
 
     def restock(self, ingredient_name: str, quantity: Quantity) -> None:
-        self.order_service.inventory.restock(Ingredient(ingredient_name), quantity)
+        self.inventory.restock(Ingredient(ingredient_name), quantity)
         self._persist_inventory()
 
     def get_today_orders(self) -> list[OrderRecord]:
@@ -42,4 +40,4 @@ class KioskAdminService:
 
     def _persist_inventory(self) -> None:
         if self.inventory_persister is not None:
-            self.inventory_persister.persist(self.order_service.inventory)
+            self.inventory_persister.persist(self.inventory)
