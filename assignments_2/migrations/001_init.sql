@@ -1,0 +1,233 @@
+BEGIN;
+
+-- ============================================================
+-- Ingredient
+-- ============================================================
+
+CREATE TABLE ingredient (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+    name TEXT NOT NULL,
+    unit TEXT NOT NULL DEFAULT '',
+
+    CONSTRAINT pk_ingredient
+        PRIMARY KEY (id),
+
+    CONSTRAINT uq_ingredient_name
+        UNIQUE (name)
+);
+
+-- ============================================================
+-- Inventory
+-- ============================================================
+
+CREATE TABLE inventory (
+    ingredient_id BIGINT NOT NULL,
+    quantity INTEGER NOT NULL,
+
+    CONSTRAINT pk_inventory
+        PRIMARY KEY (ingredient_id),
+
+    CONSTRAINT ck_inventory_quantity
+        CHECK (quantity >= 0),
+
+    CONSTRAINT fk_inventory_ingredient
+        FOREIGN KEY (ingredient_id)
+        REFERENCES ingredient(id)
+        ON DELETE RESTRICT
+);
+
+-- ============================================================
+-- Menu
+-- ============================================================
+
+CREATE TABLE menu (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+    name TEXT NOT NULL,
+    price INTEGER NOT NULL,
+
+    CONSTRAINT pk_menu
+        PRIMARY KEY (id),
+
+    CONSTRAINT uq_menu_name
+        UNIQUE (name),
+
+    CONSTRAINT ck_menu_price
+        CHECK (price >= 0)
+);
+
+-- ============================================================
+-- Recipe Item
+-- ============================================================
+
+CREATE TABLE recipe_item (
+    menu_id BIGINT NOT NULL,
+    ingredient_id BIGINT NOT NULL,
+    quantity INTEGER NOT NULL,
+
+    CONSTRAINT pk_recipe_item
+        PRIMARY KEY (menu_id, ingredient_id),
+
+    CONSTRAINT ck_recipe_quantity
+        CHECK (quantity > 0),
+
+    CONSTRAINT fk_recipe_menu
+        FOREIGN KEY (menu_id)
+        REFERENCES menu(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_recipe_ingredient
+        FOREIGN KEY (ingredient_id)
+        REFERENCES ingredient(id)
+        ON DELETE RESTRICT
+);
+
+-- ============================================================
+-- Option Group
+-- ============================================================
+
+CREATE TABLE option_group (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+    menu_id BIGINT NOT NULL,
+
+    name TEXT NOT NULL,
+
+    min_select INTEGER NOT NULL,
+    max_select INTEGER NOT NULL,
+
+    selection_mode TEXT NOT NULL,
+
+    CONSTRAINT pk_option_group
+        PRIMARY KEY (id),
+
+    CONSTRAINT ck_option_group_min
+        CHECK (min_select >= 0),
+
+    CONSTRAINT ck_option_group_max
+        CHECK (max_select >= 1),
+
+    CONSTRAINT ck_option_group_range
+        CHECK (min_select <= max_select),
+
+    CONSTRAINT ck_option_group_selection_mode
+        CHECK (selection_mode IN ('choice', 'count')),
+
+    CONSTRAINT fk_option_group_menu
+        FOREIGN KEY (menu_id)
+        REFERENCES menu(id)
+        ON DELETE CASCADE
+);
+
+-- ============================================================
+-- Option Item
+-- ============================================================
+
+CREATE TABLE option_item (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+    option_group_id BIGINT NOT NULL,
+
+    name TEXT NOT NULL,
+
+    additional_price INTEGER NOT NULL,
+
+    CONSTRAINT pk_option_item
+        PRIMARY KEY (id),
+
+    CONSTRAINT ck_option_price
+        CHECK (additional_price >= 0),
+
+    CONSTRAINT fk_option_item_group
+        FOREIGN KEY (option_group_id)
+        REFERENCES option_group(id)
+        ON DELETE CASCADE
+);
+
+-- ============================================================
+-- Option Recipe Item
+-- ============================================================
+
+CREATE TABLE option_recipe_item (
+    option_id BIGINT NOT NULL,
+    ingredient_id BIGINT NOT NULL,
+    quantity INTEGER NOT NULL,
+
+    CONSTRAINT pk_option_recipe_item
+        PRIMARY KEY (option_id, ingredient_id),
+
+    CONSTRAINT ck_option_recipe_quantity
+        CHECK (quantity > 0),
+
+    CONSTRAINT fk_option_recipe_option
+        FOREIGN KEY (option_id)
+        REFERENCES option_item(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_option_recipe_ingredient
+        FOREIGN KEY (ingredient_id)
+        REFERENCES ingredient(id)
+        ON DELETE RESTRICT
+);
+
+-- ============================================================
+-- Customer Order
+--
+-- menu_name/menu_price/option_name/additional_price는 menu/option_item을
+-- FK로 참조하지 않고 그 시점 값을 그대로 복사(스냅샷)한다.
+-- 나중에 메뉴 가격이 바뀌어도 과거 주문 이력의 "그때 가격"은 안 바뀌어야
+-- 하기 때문이다.
+-- ============================================================
+
+CREATE TABLE customer_order (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    total_price INTEGER NOT NULL,
+
+    CONSTRAINT pk_customer_order
+        PRIMARY KEY (id),
+
+    CONSTRAINT ck_customer_order_total_price
+        CHECK (total_price >= 0)
+);
+
+CREATE TABLE order_item (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+    order_id BIGINT NOT NULL,
+
+    menu_name TEXT NOT NULL,
+    menu_price INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+
+    CONSTRAINT pk_order_item
+        PRIMARY KEY (id),
+
+    CONSTRAINT ck_order_item_menu_price
+        CHECK (menu_price >= 0),
+
+    CONSTRAINT ck_order_item_quantity
+        CHECK (quantity > 0),
+
+    CONSTRAINT fk_order_item_order
+        FOREIGN KEY (order_id)
+        REFERENCES customer_order(id)
+        ON DELETE CASCADE
+);
+
+CREATE TABLE order_item_option (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+    order_item_id BIGINT NOT NULL,
+
+    option_name TEXT NOT NULL,
+    additional_price INTEGER NOT NULL,
+
+    CONSTRAINT pk_order_item_option
+        PRIMARY KEY (id),
+
+    CONSTRAINT ck_order_item_option_price
+        CHECK (additional_price >= 0),
+
+    CONSTRAINT fk_order_item_option_item
+        FOREIGN KEY (order_item_id)
+        REFERENCES order_item(id)
+        ON DELETE CASCADE
+);
+
+COMMIT;
