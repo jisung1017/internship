@@ -2,7 +2,6 @@ from datetime import datetime
 from unittest.mock import MagicMock
 
 from src.application.kiosk_admin_service import KioskAdminService
-from src.application.order_service import OrderService
 from src.domain.ingredient import Ingredient
 from src.domain.inventory import Inventory, InventoryItem
 from src.domain.money import Money
