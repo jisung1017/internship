@@ -1,12 +1,11 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
+from src.application.checkout_service import CheckoutService
 from src.application.order_service import OrderService
 from src.application.pending_order import PendingOrder
 from src.domain.cart import Cart
 from src.domain.exceptions import InsufficientBalanceError, OutOfStockError
-from src.domain.ingredient import Ingredient
-from src.domain.inventory import Inventory
 from src.domain.menu import Menu
 from src.domain.money import Money
 from src.domain.option import Option
@@ -26,8 +25,15 @@ class StepType(Enum):
 
 @dataclass
 class KioskSession:
+    """화면 흐름(Step 전이)과 장바구니 담기 흐름만 책임진다.
+
+    실제 결제 유스케이스는 CheckoutService에, 관리자 모드는
+    KioskAdminService에 위임한다 (이 클래스는 그 둘을 전혀 모른다).
+    """
+
     menus: list[Menu]
     order_service: OrderService
+    checkout_service: CheckoutService
     cart: Cart = field(default_factory=Cart)
     step: StepType = StepType.MENU
     pending_order: PendingOrder | None = None
@@ -109,7 +115,7 @@ class KioskSession:
 
     def checkout(self) -> None:
         try:
-            self.order_service.checkout(self.cart)
+            self.checkout_service.checkout(self.cart)
         except (OutOfStockError, InsufficientBalanceError):
             self.go_to_menu()
             raise
@@ -118,11 +124,3 @@ class KioskSession:
 
     def end(self) -> None:
         self.step = StepType.END
-
-    # ---------- 개발자 모드 ----------
-
-    def get_inventory(self) -> Inventory:
-        return self.order_service.inventory
-
-    def restock(self, ingredient_name: str, quantity: Quantity) -> None:
-        self.order_service.inventory.restock(Ingredient(ingredient_name), quantity)

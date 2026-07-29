@@ -14,6 +14,8 @@ from src.domain.quantity import Quantity
 from src.domain.recipe import Recipe
 from src.domain.recipe_item import RecipeItem
 from src.interface.cli import CLI
+from src.application.checkout_service import CheckoutService
+from src.application.kiosk_admin_service import KioskAdminService
 
 
 def build_americano() -> Menu:
@@ -71,9 +73,15 @@ def build_cli(monkeypatch, inputs: list[str], balance: int, bean_quantity: int) 
     inventory = build_inventory(bean_quantity)
     payment = Payment(balance=Money(balance))
     order_service = OrderService(payment, inventory)
-    session = KioskSession(menus=menus, order_service=order_service)
+    checkout_service = CheckoutService(order_service)
+    admin_service = KioskAdminService(order_service)
+    session = KioskSession(
+        menus=menus,
+        order_service=order_service,
+        checkout_service=checkout_service,
+    )
 
-    return CLI(session)
+    return CLI(session, admin_service)
 
 
 class TestSuccessfulCheckout:
@@ -221,14 +229,14 @@ class TestDevelopmentModeValidation:
         """
         cli = build_cli(
             monkeypatch,
-            inputs=["77", "원두", "100", "0", "0"],
+            inputs=["77", "1", "원두", "100", "0", "0"],
             balance=10000,
             bean_quantity=1000,
         )
 
         cli.run()
 
-        inventory = cli.session.get_inventory()
+        inventory = cli.admin_service.get_inventory()
         assert inventory.get_quantity(Ingredient("원두")) == Quantity(1100)
         assert len(inventory.history) == 1
         assert inventory.history[0].change == 100
@@ -242,7 +250,7 @@ class TestDevelopmentModeValidation:
         """
         cli = build_cli(
             monkeypatch,
-            inputs=["77", "우유", "50", "0", "0"],
+            inputs=["77", "1", "우유", "50", "0", "0"],
             balance=10000,
             bean_quantity=1000,
         )
@@ -252,7 +260,7 @@ class TestDevelopmentModeValidation:
         captured = capsys.readouterr()
         assert "등록되지 않은 재료" in captured.out
 
-        inventory = cli.session.get_inventory()
+        inventory = cli.admin_service.get_inventory()
         assert inventory.get_quantity(Ingredient("원두")) == Quantity(1000)
         assert len(inventory.history) == 0
 
@@ -264,13 +272,13 @@ class TestDevelopmentModeValidation:
         """
         cli = build_cli(
             monkeypatch,
-            inputs=["77", "원두", "50", "원두", "30", "0", "0"],
+            inputs=["77", "1", "원두", "50", "1", "원두", "30", "0", "0"],
             balance=10000,
             bean_quantity=1000,
         )
 
         cli.run()
 
-        inventory = cli.session.get_inventory()
+        inventory = cli.admin_service.get_inventory()
         assert inventory.get_quantity(Ingredient("원두")) == Quantity(1080)
         assert [h.change for h in inventory.history] == [50, 30]

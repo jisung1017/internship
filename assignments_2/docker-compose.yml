@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17
+
+    container_name: kiosk-db
+
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: kiosk
+      POSTGRES_PASSWORD: kiosk
+      POSTGRES_DB: kiosk
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+
+volumes:
+  postgres-data:
