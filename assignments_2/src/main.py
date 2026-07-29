@@ -1,8 +1,7 @@
-from src.application.checkout_service import CheckoutService
+from src.application.cart_service import CartService
 from src.application.kiosk_admin_service import KioskAdminService
 from src.application.kiosk_loader import KioskLoaderService
-from src.application.kiosk_session import KioskSession
-from src.application.order_service import OrderService
+from src.application.order_application_service import OrderApplicationService
 from src.domain.money import Money
 from src.domain.payment import Payment
 from src.infrastructure.db import Database
@@ -27,7 +26,6 @@ from src.interface.cli import CLI
 def main() -> None:
     database = Database()
 
-    # Application 계층의 KioskLoaderService가 단일 책임 Repository들을 조합하여 초기 상태를 로드합니다.
     kiosk_loader = KioskLoaderService(
         database=database,
         menu_repository_factory=PostgresMenuRepository,
@@ -36,25 +34,27 @@ def main() -> None:
     state = kiosk_loader.load()
 
     payment = Payment(balance=Money(100000000))
-    order_service = OrderService(payment, state.inventory)
 
-    checkout_service = CheckoutService(
-        order_service=order_service,
-        order_persister=PostgresOrderPersister(database),
+    # 무상태 애플리케이션 서비스 인스턴스화
+    cart_service = CartService()
+    order_app_service = OrderApplicationService(
+        order_persister=PostgresOrderPersister(database)
     )
     admin_service = KioskAdminService(
-        order_service=order_service,
+        inventory=state.inventory,
         inventory_persister=PostgresInventoryPersister(database),
         order_history_reader=PostgresOrderHistoryReader(database),
     )
 
-    session = KioskSession(
+    cli = CLI(
         menus=state.menus,
-        order_service=order_service,
-        checkout_service=checkout_service,
+        payment=payment,
+        inventory=state.inventory,
+        cart_service=cart_service,
+        order_app_service=order_app_service,
+        admin_service=admin_service,
     )
-
-    CLI(session, admin_service).run()
+    cli.run()
 
 
 if __name__ == "__main__":
