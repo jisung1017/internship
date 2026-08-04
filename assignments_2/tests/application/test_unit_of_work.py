@@ -28,16 +28,17 @@ class FakeRepository:
 
 class FakeInventoryRepository:
 
-    def __init__(self, inventory: Inventory) -> None:
-        self._inventory = inventory
-        self.saved_inventory: Inventory | None = None
+    def __init__(self, inventory: Inventory | None = None):
+        self._inventory = inventory or Inventory(items=[])
 
-    def get_all(self) -> Inventory:
+    def load(self) -> Inventory:
+        return self._inventory
+
+    def load_for_update(self, ingredient_names: list[str]) -> Inventory:
         return self._inventory
 
     def save(self, inventory: Inventory) -> None:
-        self.saved_inventory = inventory
-
+        self._inventory = inventory
 
 class FakeUnitOfWork(AbstractUnitOfWork):
 
