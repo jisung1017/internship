@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Response
 
 from src.application.cart_service import CartService
 from src.application.order_application_service import OrderApplicationService
@@ -8,13 +11,10 @@ from src.domain.money import Money
 from src.domain.payment import Payment
 from src.interface.api.dependencies import (
     get_cart_service,
-    get_global_cart,
     get_kiosk_state,
     get_order_app_service,
 )
 from src.interface.api.schemas import (
-    AddCartItemRequest,
-    CartResponse,
     CreateOrderRequest,
     MenuResponse,
     OrderResponse,
@@ -22,54 +22,33 @@ from src.interface.api.schemas import (
 
 router = APIRouter(prefix="/api/v1", tags=["Kiosk"])
 
-
 @router.get("/menus", response_model=list[MenuResponse])
 def get_menus(state=Depends(get_kiosk_state)):
     return [MenuResponse.from_domain(menu) for menu in state.menus]
 
-
-@router.get("/cart", response_model=CartResponse)
-def get_cart(cart: Cart = Depends(get_global_cart)):
-    return CartResponse.from_domain(cart)
-
-
-@router.post("/cart/items", response_model=CartResponse)
-def add_cart_item(
-    request: AddCartItemRequest,
+@router.post("/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
+def create_order(
+    request: CreateOrderRequest,
+    response: Response,
+    x_kiosk_uuid: Annotated[UUID, Header(description="키오스크 단말기 고유 UUID")],
     state=Depends(get_kiosk_state),
-    cart: Cart = Depends(get_global_cart),
+    order_service: OrderApplicationService = Depends(get_order_app_service),
     cart_service: CartService = Depends(get_cart_service),
 ):
+    # 요청 시점에 일회성 장바구니 생성 (Stateless)
+    cart = Cart()
     try:
-        cart_service.add_item_by_names(
-            cart=cart,
-            available_menus=state.menus,
-            menu_name=request.menu_name,
-            quantity_val=request.quantity,
-            selected_option_names=request.selected_options,
-        )
+        for item in request.items:
+            cart_service.add_item_by_names(
+                cart=cart,
+                available_menus=state.menus,
+                menu_name=item.menu_name,
+                quantity_val=item.quantity,
+                selected_option_names=item.selected_options,
+            )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    return CartResponse.from_domain(cart)
-
-
-@router.delete("/cart")
-def clear_cart(
-    cart: Cart = Depends(get_global_cart),
-    cart_service: CartService = Depends(get_cart_service),
-):
-    cart_service.clear_cart(cart)
-    return {"message": "장바구니가 비워졌습니다."}
-
-
-@router.post("/orders", response_model=OrderResponse)
-def create_order(
-    request: CreateOrderRequest,
-    cart: Cart = Depends(get_global_cart),
-    state=Depends(get_kiosk_state),
-    order_service: OrderApplicationService = Depends(get_order_app_service),
-):
     payment = Payment(balance=Money(request.payment_balance))
 
     try:
@@ -79,11 +58,15 @@ def create_order(
             inventory=state.inventory,
         )
     except (OutOfStockError, InsufficientBalanceError, ValueError) as e:
-        cart.clear()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    # RESTful 규약: 생성된 자원의 위치를 Location 헤더로 전달
+    response.headers["Location"] = f"/api/v1/orders/{order.id}"
 
     return OrderResponse(
         order_id=order.id,
-        total_price=order.total_price.amount,
+        client_uuid=x_kiosk_uuid,
+        total_price=order.total_price().amount,
         remaining_balance=payment.balance.amount,
+        message="주문이 성공적으로 완료되었습니다."
     )
