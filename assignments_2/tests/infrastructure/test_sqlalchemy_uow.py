@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from src.domain.cart import Cart
 from src.domain.cart_item import CartItem
 from src.domain.ingredient import Ingredient
+from src.domain.menu import Menu
 from src.domain.money import Money
 from src.domain.order import Order
 from src.domain.quantity import Quantity
