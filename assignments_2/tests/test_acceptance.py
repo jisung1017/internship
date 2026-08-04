@@ -15,7 +15,41 @@ from src.domain.quantity import Quantity
 from src.domain.recipe import Recipe
 from src.domain.recipe_item import RecipeItem
 from src.interface.cli import CLI
+from src.application.unit_of_work import AbstractUnitOfWork
 
+
+class FakeRepository:
+    def __init__(self):
+        self.items = []
+
+    def save(self, item):
+        self.items.append(item)
+
+
+class FakeInventoryRepository:
+    def __init__(self, inventory=None):
+        self._inventory = inventory
+
+    def get_all(self):
+        return self._inventory
+
+    def save(self, inventory):
+        self._inventory = inventory
+
+
+class FakeUnitOfWork(AbstractUnitOfWork):
+    def __init__(self, inventory=None, menus=None, orders=None):
+        self.inventories = FakeInventoryRepository(inventory)
+        self.menus = menus or FakeRepository()
+        self.orders = orders or FakeRepository()
+        self.committed = False
+        self.rolled_back = False
+
+    def commit(self) -> None:
+        self.committed = True
+
+    def rollback(self) -> None:
+        self.rolled_back = True
 
 def build_americano() -> Menu:
     bean = Ingredient("원두")
@@ -73,7 +107,8 @@ def build_cli(monkeypatch, inputs: list[str], balance: int, bean_quantity: int) 
     payment = Payment(balance=Money(balance))
 
     cart_service = CartService()
-    order_app_service = OrderApplicationService()
+    fake_uow = FakeUnitOfWork(inventory=inventory)
+    order_app_service = OrderApplicationService(uow=fake_uow)
     admin_service = KioskAdminService(inventory=inventory)
 
     return CLI(
