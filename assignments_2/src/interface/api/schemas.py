@@ -1,143 +1,96 @@
-from datetime import datetime
+from uuid import UUID
 from pydantic import BaseModel, Field
 
-from src.domain.cart import Cart
-from src.domain.cart_item import CartItem
-from src.domain.menu import Menu
-from src.domain.option import Option
-from src.domain.option_group import OptionGroup
-from src.domain.order_record import OrderRecord
-
-
-# ---------- Catalog / Menu ----------
-
-class OptionSchema(BaseModel):
+# --- Menu Schemas ---
+class OptionResponse(BaseModel):
     name: str
     additional_price: int
 
-    @classmethod
-    def from_domain(cls, option: Option) -> "OptionSchema":
-        return cls(
-            name=option.name,
-            additional_price=option.additional_price.amount,
-        )
-
-
-class OptionGroupSchema(BaseModel):
+class OptionGroupResponse(BaseModel):
     name: str
     min_quantity: int
     max_quantity: int
     selection_mode: str
-    options: list[OptionSchema]
-
-    @classmethod
-    def from_domain(cls, group: OptionGroup) -> "OptionGroupSchema":
-        return cls(
-            name=group.name,
-            min_quantity=group.min_quantity.value,
-            max_quantity=group.max_quantity.value,
-            selection_mode=group.selection_mode,
-            options=[OptionSchema.from_domain(opt) for opt in group.options],
-        )
-
+    options: list[OptionResponse]
 
 class MenuResponse(BaseModel):
     name: str
     price: int
-    option_groups: list[OptionGroupSchema]
+    option_groups: list[OptionGroupResponse]
 
     @classmethod
-    def from_domain(cls, menu: Menu) -> "MenuResponse":
+    def from_domain(cls, menu) -> "MenuResponse":
         return cls(
             name=menu.name,
             price=menu.price.amount,
             option_groups=[
-                OptionGroupSchema.from_domain(g) for g in menu.option_groups
-            ],
+                OptionGroupResponse(
+                    name=group.name,
+                    min_quantity=group.min_quantity.value,
+                    max_quantity=group.max_quantity.value,
+                    selection_mode=group.selection_mode,
+                    options=[
+                        OptionResponse(
+                            name=opt.name,
+                            additional_price=opt.additional_price.amount
+                        ) for opt in group.options
+                    ]
+                ) for group in menu.option_groups
+            ]
         )
 
-
-# ---------- Cart ----------
-
-class AddCartItemRequest(BaseModel):
-    menu_name: str
-    quantity: int = Field(..., ge=1, le=10)
-    selected_options: list[str] = Field(default_factory=list)
-
-
-class CartItemResponse(BaseModel):
-    menu_name: str
-    quantity: int
-    selected_options: list[str]
-    line_total: int
-
-    @classmethod
-    def from_domain(cls, item: CartItem) -> "CartItemResponse":
-        return cls(
-            menu_name=item.menu.name,
-            quantity=item.quantity.value,
-            selected_options=[opt.name for opt in item.selected_options],
-            line_total=item.total_price().amount,
-        )
-
-
-class CartResponse(BaseModel):
-    items: list[CartItemResponse]
-    total_price: int
-
-    @classmethod
-    def from_domain(cls, cart: Cart) -> "CartResponse":
-        return cls(
-            items=[CartItemResponse.from_domain(item) for item in cart.items],
-            total_price=cart.total_price().amount,
-        )
-
-
-# ---------- Order / Checkout ----------
+# --- Order Schemas ---
+class OrderItemRequest(BaseModel):
+    menu_name: str = Field(..., description="메뉴 이름")
+    quantity: int = Field(..., gt=0, description="수량")
+    selected_options: list[str] = Field(default_factory=list, description="선택한 옵션 이름 목록")
 
 class CreateOrderRequest(BaseModel):
-    payment_balance: int = Field(..., ge=0)
-
+    payment_balance: int = Field(..., ge=0, description="투입 결제 금액")
+    items: list[OrderItemRequest] = Field(..., min_length=1, description="주문 항목 목록")
 
 class OrderResponse(BaseModel):
-    order_id: int | None = None
+    order_id: int
+    client_uuid: UUID
     total_price: int
     remaining_balance: int
+    message: str = "주문이 성공적으로 완료되었습니다."
 
-
-# ---------- Admin ----------
-
-class RestockRequest(BaseModel):
-    ingredient_name: str
-    quantity: int = Field(..., gt=0)
-
-
+# --- Admin Schemas ---
 class InventoryItemResponse(BaseModel):
     ingredient_name: str
     quantity: int
     unit: str
 
-
-class InventoryHistoryResponse(BaseModel):
+class RestockRequest(BaseModel):
     ingredient_name: str
-    change: int
-    reason: str
-    timestamp: datetime
+    quantity: int = Field(..., gt=0)
 
+class OrderRecordItemResponse(BaseModel):
+    menu_name: str
+    quantity: int
+    line_total: int
 
 class OrderRecordResponse(BaseModel):
-    id: int | None
-    created_at: datetime
+    id: int
+    created_at: str
     total_price: int
+    items: list[OrderRecordItemResponse]
 
     @classmethod
-    def from_domain(cls, record: OrderRecord) -> "OrderRecordResponse":
+    def from_domain(cls, record) -> "OrderRecordResponse":
         return cls(
             id=record.id,
-            created_at=record.created_at,
+            created_at=record.created_at.isoformat(),
             total_price=record.total_price.amount,
+            items=[
+                OrderRecordItemResponse(
+                    menu_name=item.menu_name,
+                    quantity=item.quantity,
+                    line_total=item.line_total.amount
+                ) for item in record.items
+            ]
         )
-
 
 class TodaySalesResponse(BaseModel):
     total_sales: int
