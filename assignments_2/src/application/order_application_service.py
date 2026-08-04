@@ -21,7 +21,7 @@ class OrderApplicationService:
             current_inventory = (
                 inventory
                 if inventory is not None
-                else self.uow.inventories.get_all()
+                else self.uow.inventories.load()
             )
 
             order = Order.from_cart(cart)

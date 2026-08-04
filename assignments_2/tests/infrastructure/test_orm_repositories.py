@@ -33,7 +33,7 @@ def test_orm_menu_repository():
     session.commit()
 
     repo = OrmMenuRepository(session)
-    menus = repo.get_all()
+    menus = repo.find_all()
 
     assert len(menus) == 1
     assert menus[0].name == "아메리카노"
@@ -49,7 +49,7 @@ def test_orm_inventory_repository():
     session.commit()
 
     repo = OrmInventoryRepository(session)
-    inventory = repo.get_all()
+    inventory = repo.load()
 
     # inventory.items 리스트에서 원두 항목 찾기
     item = next((i for i in inventory.items if i.ingredient == Ingredient("원두", "g")), None)
