@@ -9,7 +9,6 @@ from src.application.kiosk_admin_service import KioskAdminService
 from src.application.kiosk_loader import KioskLoaderService
 from src.application.order_application_service import OrderApplicationService
 from src.application.unit_of_work import AbstractUnitOfWork
-from src.domain.cart import Cart
 from src.infrastructure.db import DEFAULT_DATABASE_URL, Database
 from src.infrastructure.repositories.postgres_inventory_persister import (
     PostgresInventoryPersister,
@@ -52,7 +51,6 @@ _admin_service = KioskAdminService(
     inventory_persister=PostgresInventoryPersister(_db),
     order_history_reader=PostgresOrderHistoryReader(_db),
 )
-_global_cart = Cart()
 
 
 def get_uow() -> AbstractUnitOfWork:
@@ -75,7 +73,3 @@ def get_order_app_service(
 
 def get_admin_service():
     return _admin_service
-
-
-def get_global_cart():
-    return _global_cart
