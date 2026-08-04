@@ -21,7 +21,7 @@ class OrmMenuRepository:
     def __init__(self, session: Session):
         self._session = session
 
-    def get_all(self) -> list[Menu]:
+    def find_all(self) -> list[Menu]:
         models = (
             self._session.query(MenuModel)
             .options(
@@ -30,41 +30,48 @@ class OrmMenuRepository:
             )
             .all()
         )
+        return [self._to_domain(m) for m in models]
 
-        menus: list[Menu] = []
-        for menu_model in models:
-            recipe_items = [
-                RecipeItem(
-                    ingredient=Ingredient(
-                        name=r.ingredient.name, unit=r.ingredient.unit
-                    ),
-                    quantity=Quantity(r.quantity),
-                )
-                for r in menu_model.recipes
-            ]
-
-            option_groups = [
-                OptionGroup(
-                    name=og.name,
-                    options=[
-                        Option(name=o.name, additional_price=Money(o.additional_price))
-                        for o in og.options
-                    ],
-                    min_quantity=og.min_quantity,
-                    max_quantity=og.max_quantity,
-                )
-                for og in menu_model.option_groups
-            ]
-
-            recipe = Recipe(items=recipe_items) if hasattr(Recipe, '__init__') else Recipe(recipe_items)
-
-            menus.append(
-                Menu(
-                    name=menu_model.name,
-                    price=Money(menu_model.price),
-                    recipe=recipe,
-                    option_groups=option_groups,
-                )
+    def find_by_name(self, name: str) -> Menu | None:
+        model = (
+            self._session.query(MenuModel)
+            .filter(MenuModel.name == name)
+            .options(
+                joinedload(MenuModel.recipes).joinedload(RecipeItemModel.ingredient),
+                joinedload(MenuModel.option_groups).joinedload(OptionGroupModel.options),
             )
+            .first()
+        )
+        return self._to_domain(model) if model else None
 
-        return menus
+    def _to_domain(self, menu_model: MenuModel) -> Menu:
+        recipe_items = [
+            RecipeItem(
+                ingredient=Ingredient(
+                    name=r.ingredient.name, unit=r.ingredient.unit
+                ),
+                quantity=Quantity(r.quantity),
+            )
+            for r in menu_model.recipes
+        ]
+
+        option_groups = [
+            OptionGroup(
+                name=og.name,
+                options=[
+                    Option(name=o.name, additional_price=Money(o.additional_price))
+                    for o in og.options
+                ],
+                min_quantity=Quantity(og.min_quantity), 
+                max_quantity=Quantity(og.max_quantity), 
+                selection_mode=og.selection_mode,
+            )
+            for og in menu_model.option_groups
+        ]
+
+        return Menu(
+            name=menu_model.name,
+            price=Money(menu_model.price),
+            recipe=Recipe(items=recipe_items),
+            option_groups=option_groups,
+        )
