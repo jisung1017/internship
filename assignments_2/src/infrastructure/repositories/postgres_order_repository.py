@@ -26,6 +26,7 @@ class PostgresOrderRepository(OrderRepository):
                 },
             )
             order_id = cursor.fetchone()["id"]
+            order.id = order_id  # 도메인 Order 객체에 id 할당
 
             for item in order.items:
                 cursor.execute(

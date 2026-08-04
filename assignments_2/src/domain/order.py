@@ -4,7 +4,7 @@ from src.domain.money import Money
 
 
 class Order:
-    def __init__(self, items: list[CartItem]):
+    def __init__(self, items: list[CartItem], id: int | None = None):
         if not isinstance(items, list):
             raise TypeError("items 은 list 형 입니다.")
 
@@ -16,6 +16,7 @@ class Order:
 
         # Cart와 리스트를 공유하지 않도록 복사
         self.items = items.copy()
+        self.id = id
 
     @classmethod
     def from_cart(cls, cart: Cart) -> "Order":

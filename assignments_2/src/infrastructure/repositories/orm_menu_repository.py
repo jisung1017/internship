@@ -62,8 +62,8 @@ class OrmMenuRepository:
                     Option(name=o.name, additional_price=Money(o.additional_price))
                     for o in og.options
                 ],
-                min_quantity=Quantity(og.min_quantity), 
-                max_quantity=Quantity(og.max_quantity), 
+                min_quantity=Quantity(og.min_select), 
+                max_quantity=Quantity(og.max_select), 
                 selection_mode=og.selection_mode,
             )
             for og in menu_model.option_groups
