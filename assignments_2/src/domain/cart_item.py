@@ -1,9 +1,11 @@
-from dataclasses import dataclass,field
+from dataclasses import dataclass, field
 
 from src.domain.menu import Menu
 from src.domain.money import Money
 from src.domain.option import Option
 from src.domain.quantity import Quantity
+from src.domain.recipe import Recipe
+
 
 @dataclass
 class CartItem:
@@ -26,7 +28,7 @@ class CartItem:
                 raise TypeError(
                     "CartItem selected_options는 Option 타입으로만 이루어져야 합니다."
                 )
-    
+
     def total_price(self) -> Money:
         option_total = Money(0)
 
@@ -36,3 +38,11 @@ class CartItem:
         total = self.menu.price.add(option_total)
 
         return total.multiply(self.quantity)
+
+    def get_recipe_requirements(self) -> list[tuple[Recipe, Quantity]]:
+        """해당 주문 항목(메뉴 + 옵션)이 필요로 하는 레시피 요구량 목록을 반환합니다."""
+        requirements: list[tuple[Recipe, Quantity]] = [(self.menu.recipe, self.quantity)]
+        requirements.extend(
+            (option.recipe, self.quantity) for option in self.selected_options
+        )
+        return requirements
