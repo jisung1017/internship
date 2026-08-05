@@ -1,10 +1,12 @@
 from dataclasses import dataclass
+from uuid import UUID
 
 from src.application.unit_of_work import AbstractUnitOfWork
 from src.domain.cart import Cart
 from src.domain.exceptions import OutOfStockError
 from src.domain.inventory import Inventory
 from src.domain.order import Order
+from src.domain.order_record import OrderRecord
 from src.domain.payment import Payment
 
 
@@ -52,3 +54,7 @@ class OrderApplicationService:
             self.uow.commit()
 
             return order
+
+    def get_order_by_uuid(self, order_uuid: UUID) -> OrderRecord | None:
+        with self.uow:
+            return self.uow.orders.find_by_uuid(order_uuid)

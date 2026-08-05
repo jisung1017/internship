@@ -50,11 +50,34 @@ class CreateOrderRequest(BaseModel):
     items: list[OrderItemRequest] = Field(..., min_length=1, description="주문 항목 목록")
 
 class OrderResponse(BaseModel):
-    order_id: int
-    client_uuid: UUID
+    order_uuid: UUID = Field(..., description="외부 제공용 주문 고유 UUID")
+    client_uuid: UUID = Field(..., description="요청한 키오스크 단말기 UUID")
     total_price: int
     remaining_balance: int
     message: str = "주문이 성공적으로 완료되었습니다."
+
+class OrderDetailResponse(BaseModel):
+    order_uuid: UUID
+    created_at: str
+    total_price: int
+    items: list["OrderRecordItemResponse"]
+
+    @classmethod
+    def from_domain(cls, order_uuid: UUID, record) -> "OrderDetailResponse":
+        return cls(
+            order_uuid=order_uuid,
+            created_at=record.created_at.isoformat(),
+            total_price=record.total_price.amount,
+            items=[
+                OrderRecordItemResponse(
+                    menu_name=item.menu_name,
+                    quantity=item.quantity,
+                    line_total=item.line_total.amount,
+                )
+                for item in record.items
+            ],
+        )
+
 
 # --- Admin Schemas ---
 class InventoryItemResponse(BaseModel):
