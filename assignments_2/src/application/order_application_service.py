@@ -21,39 +21,39 @@ class OrderApplicationService:
     ) -> Order:
         with self.uow:
             current_inventory = (
-                inventory
-                if inventory is not None
-                else self.uow.inventories.load()
+                inventory if inventory is not None else self.uow.inventories.load()
             )
 
             order = Order.from_cart(cart)
 
-            requirements = [(item.menu.recipe, item.quantity) for item in order.items]
-            requirements += [
+            requirements = [
+                (item.menu.recipe, item.quantity) for item in order.items
+            ] + [
                 (option.recipe, item.quantity)
                 for item in order.items
                 for option in item.selected_options
             ]
 
-            if not current_inventory.can_consume_all(requirements):
-                cart.clear()
-                raise OutOfStockError()
-
             try:
+                # 1. 재고 검증
+                if not current_inventory.can_consume_all(requirements):
+                    raise OutOfStockError()
+
+                # 2. 결제 진행 (Payment.pay 는 Order 객체를 전달받음)
                 payment.pay(order)
-            except Exception:
+
+                # 3. 재고 차감
+                current_inventory.consume_all(requirements)
+
+                # 4. 영속화 및 트랜잭션 커밋
+                self.uow.orders.save(order)
+                self.uow.inventories.save(current_inventory)
+                self.uow.commit()
+
+                return order
+            finally:
+                # 성공 및 모든 예외 상황 시 장바구니 일괄 정리
                 cart.clear()
-                raise
-
-            current_inventory.consume_all(requirements)
-            cart.clear()
-
-            self.uow.orders.save(order)
-            self.uow.inventories.save(current_inventory)
-
-            self.uow.commit()
-
-            return order
 
     def get_order_by_uuid(self, order_uuid: UUID) -> OrderRecord | None:
         with self.uow:
