@@ -1,5 +1,6 @@
+import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, Text, Uuid
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -73,6 +74,7 @@ class OrderModel(Base):
     __tablename__ = "customer_order"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    order_uuid = Column(Uuid(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False)
     total_price = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
