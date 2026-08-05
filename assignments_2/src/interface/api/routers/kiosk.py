@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 
 from src.application.cart_service import CartService
 from src.application.order_application_service import OrderApplicationService
@@ -17,6 +17,7 @@ from src.interface.api.dependencies import (
 from src.interface.api.schemas import (
     CreateOrderRequest,
     MenuResponse,
+    OrderDetailResponse,
     OrderResponse,
 )
 
@@ -60,13 +61,28 @@ def create_order(
     except (OutOfStockError, InsufficientBalanceError, ValueError) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    # RESTful 규약: 생성된 자원의 위치를 Location 헤더로 전달
-    response.headers["Location"] = f"/api/v1/orders/{order.id}"
+    # 외부 노출용 식별자는 order.order_uuid 를 사용
+    response.headers["Location"] = f"/api/v1/orders/{order.order_uuid}"
 
     return OrderResponse(
-        order_id=order.id,
+        order_uuid=order.order_uuid,
         client_uuid=x_kiosk_uuid,
         total_price=order.total_price().amount,
         remaining_balance=payment.balance.amount,
         message="주문이 성공적으로 완료되었습니다."
     )
+
+
+@router.get("/orders/{order_uuid}", response_model=OrderDetailResponse)
+def get_order(
+    order_uuid: UUID,
+    order_service: OrderApplicationService = Depends(get_order_app_service),
+):
+    order_record = order_service.get_order_by_uuid(order_uuid)
+    if not order_record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="주문 정보를 찾을 수 없습니다.",
+        )
+
+    return OrderDetailResponse.from_domain(order_uuid, order_record)
