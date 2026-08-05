@@ -24,35 +24,29 @@ class OrderApplicationService:
                 inventory if inventory is not None else self.uow.inventories.load()
             )
 
+            # 1. 도메인 객체 생성 및 레시피 요구량 도메인 위임 추출
             order = Order.from_cart(cart)
-
-            requirements = [
-                (item.menu.recipe, item.quantity) for item in order.items
-            ] + [
-                (option.recipe, item.quantity)
-                for item in order.items
-                for option in item.selected_options
-            ]
+            requirements = order.get_recipe_requirements()
 
             try:
-                # 1. 재고 검증
+                # 2. 재고 검증
                 if not current_inventory.can_consume_all(requirements):
                     raise OutOfStockError()
 
-                # 2. 결제 진행 (Payment.pay 는 Order 객체를 전달받음)
+                # 3. 결제 진행 (Payment.pay 는 Order 객체를 인자로 받음)
                 payment.pay(order)
 
-                # 3. 재고 차감
+                # 4. 재고 차감
                 current_inventory.consume_all(requirements)
 
-                # 4. 영속화 및 트랜잭션 커밋
+                # 5. 영속화 및 트랜잭션 커밋
                 self.uow.orders.save(order)
                 self.uow.inventories.save(current_inventory)
                 self.uow.commit()
 
                 return order
             finally:
-                # 성공 및 모든 예외 상황 시 장바구니 일괄 정리
+                # 성공 및 모든 예외 상황 발생 시 일관되게 장바구니 정리
                 cart.clear()
 
     def get_order_by_uuid(self, order_uuid: UUID) -> OrderRecord | None:
