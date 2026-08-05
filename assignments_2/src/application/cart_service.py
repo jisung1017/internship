@@ -17,7 +17,6 @@ class CartService:
         item = CartItem(menu=menu, quantity=quantity, selected_options=selected_options)
         cart.add_item(item)
 
-    # 라우터 다이어트를 위해 추가된 Application helper 메서드
     def add_item_by_names(
         self,
         cart: Cart,
@@ -31,16 +30,15 @@ class CartService:
         if not menu:
             raise ValueError(f"존재하지 않는 메뉴입니다: {menu_name}")
 
-        # 2. 옵션 도메인 객체 매핑
-        available_options = [opt for group in menu.option_groups for opt in group.options]
+        # 2. 옵션 도메인 객체 매핑 (Menu 도메인에 탐색 위임)
         selected_options: list[Option] = []
         for opt_name in selected_option_names:
-            matched = next((opt for opt in available_options if opt.name == opt_name), None)
+            matched = menu.find_option_by_name(opt_name)
             if not matched:
                 raise ValueError(f"존재하지 않는 옵션입니다: {opt_name}")
             selected_options.append(matched)
 
-        # 3. 도메인 메서드 호출
+        # 3. 도메인 메서드 호출 및 장바구니 추가
         self.add_item(
             cart=cart,
             menu=menu,
