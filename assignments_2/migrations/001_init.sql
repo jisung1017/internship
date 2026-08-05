@@ -169,20 +169,19 @@ CREATE TABLE option_recipe_item (
 
 -- ============================================================
 -- Customer Order
---
--- menu_name/menu_price/option_name/additional_price는 menu/option_item을
--- FK로 참조하지 않고 그 시점 값을 그대로 복사(스냅샷)한다.
--- 나중에 메뉴 가격이 바뀌어도 과거 주문 이력의 "그때 가격"은 안 바뀌어야
--- 하기 때문이다.
 -- ============================================================
 
 CREATE TABLE customer_order (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
+    order_uuid UUID NOT NULL DEFAULT gen_random_uuid(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     total_price INTEGER NOT NULL,
 
     CONSTRAINT pk_customer_order
         PRIMARY KEY (id),
+
+    CONSTRAINT uq_customer_order_uuid
+        UNIQUE (order_uuid),
 
     CONSTRAINT ck_customer_order_total_price
         CHECK (total_price >= 0)
