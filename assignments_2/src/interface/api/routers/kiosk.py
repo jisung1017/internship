@@ -36,9 +36,9 @@ def create_order(
     order_service: OrderApplicationService = Depends(get_order_app_service),
     cart_service: CartService = Depends(get_cart_service),
 ):
-    # 요청 시점에 일회성 장바구니 생성 (Stateless)
-    cart = Cart()
     try:
+        # 1. HTTP 요청 당 일회성 Cart 객체 생성
+        cart = Cart()
         for item in request.items:
             cart_service.add_item_by_names(
                 cart=cart,
@@ -47,30 +47,30 @@ def create_order(
                 quantity_val=item.quantity,
                 selected_option_names=item.selected_options,
             )
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    payment = Payment(balance=Money(request.payment_balance))
+        payment = Payment(balance=Money(request.payment_balance))
 
-    try:
+        # 2. 주문 실행 (inventory 생략 -> UoW가 DB 최신 재고 자동 조회)
         order = order_service.place_order(
             cart=cart,
             payment=payment,
-            inventory=state.inventory,
+        )
+
+        # 3. RESTful Location 헤더 설정
+        response.headers["Location"] = f"/api/v1/orders/{order.order_uuid}"
+
+        return OrderResponse(
+            order_uuid=order.order_uuid,
+            client_uuid=x_kiosk_uuid,
+            total_price=order.total_price().amount,
+            remaining_balance=payment.balance.amount,
+            message="주문이 성공적으로 완료되었습니다.",
         )
     except (OutOfStockError, InsufficientBalanceError, ValueError) as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-    # 외부 노출용 식별자는 order.order_uuid 를 사용
-    response.headers["Location"] = f"/api/v1/orders/{order.order_uuid}"
-
-    return OrderResponse(
-        order_uuid=order.order_uuid,
-        client_uuid=x_kiosk_uuid,
-        total_price=order.total_price().amount,
-        remaining_balance=payment.balance.amount,
-        message="주문이 성공적으로 완료되었습니다."
-    )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
 
 
 @router.get("/orders/{order_uuid}", response_model=OrderDetailResponse)
