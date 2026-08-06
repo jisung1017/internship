@@ -1,11 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
+from src.application.inventory_repository import InventoryRepository
+from src.application.menu_repository import MenuRepository
+from src.application.order_repository import OrderRepository
 
 class AbstractUnitOfWork(ABC):
-    menus: Any
-    inventories: Any
-    orders: Any
+    menus: MenuRepository
+    inventories: InventoryRepository
+    orders: OrderRepository
 
     def __enter__(self) -> "AbstractUnitOfWork":
         return self
