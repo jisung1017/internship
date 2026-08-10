@@ -1,16 +1,22 @@
-from abc import ABC, abstractmethod
-from typing import Any
+from __future__ import annotations
 
-from src.application.inventory_repository import InventoryRepository
-from src.application.menu_repository import MenuRepository
-from src.application.order_repository import OrderRepository
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from src.application.inventory_repository import InventoryRepository
+    from src.application.menu_repository import MenuRepository
+    from src.application.order_repository import OrderRepository
+
 
 class AbstractUnitOfWork(ABC):
+    """애플리케이션 계층 UoW 추상 규격"""
+
     menus: MenuRepository
     inventories: InventoryRepository
     orders: OrderRepository
 
-    def __enter__(self) -> "AbstractUnitOfWork":
+    def __enter__(self) -> AbstractUnitOfWork:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
