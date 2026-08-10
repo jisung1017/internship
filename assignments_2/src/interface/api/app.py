@@ -1,4 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
+
+from src.domain.exceptions import OutOfStockError, PaymentFailedError
 from src.interface.api.routers import admin_router, kiosk_router
 
 app = FastAPI(
@@ -11,7 +14,15 @@ app = FastAPI(
 app.include_router(kiosk_router)
 app.include_router(admin_router)
 
-# src/interface/api/app.py
+
+@app.exception_handler(OutOfStockError)
+@app.exception_handler(PaymentFailedError)
+@app.exception_handler(ValueError)
+def domain_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": str(exc)},
+    )
 
 @app.get("/")
 def root():
