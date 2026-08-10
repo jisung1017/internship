@@ -14,7 +14,7 @@ from src.domain.payment import Payment
 
 @dataclass
 class OrderApplicationService:
-    """주문 애플리케이션 서비스"""
+    """주문 관련 유스케이스 조율 애플리케이션 서비스"""
 
     uow: AbstractUnitOfWork
     cart_service: CartService = field(default_factory=CartService)
@@ -26,13 +26,26 @@ class OrderApplicationService:
     def place_order(
         self, cart: Cart, payment: Payment, inventory: Inventory | None = None
     ) -> Order:
-        """CLI 및 도메인 전용 주문 결제/차감/저장 유스케이스"""
+        """장바구니와 결제 객체를 받아 주문을 결제/차감/저장하는 유스케이스"""
         with self.uow:
-            current_inventory = (
-                inventory if inventory is not None else self.uow.inventories.load()
-            )
             order = Order.from_cart(cart)
             requirements = order.get_recipe_requirements()
+
+            # 1. 주문 항목에서 요구하는 재료 이름들을 중복 없이 추출
+            ingredient_names = list(
+                {
+                    recipe_item.ingredient.name
+                    for recipe, _ in requirements
+                    for recipe_item in recipe.items
+                }
+            )
+
+            # 2. load_for_update()를 통해 해당 재료 행(Row)들에 비관적 락(SELECT ... FOR UPDATE) 적용
+            current_inventory = (
+                inventory
+                if inventory is not None
+                else self.uow.inventories.load_for_update(ingredient_names)
+            )
 
             try:
                 if not current_inventory.can_consume_all(requirements):
@@ -54,7 +67,7 @@ class OrderApplicationService:
         items_dto: list,
         is_payment_approved: bool = True,
     ) -> Order:
-        """API DTO 기반 주문 생성 유스케이스"""
+        """DTO 기반 주문 생성 유스케이스 (API 전용)"""
         with self.uow:
             available_menus = self.uow.menus.find_all()
             cart = Cart()
