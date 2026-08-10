@@ -8,13 +8,13 @@ from src.infrastructure.repositories.orm_inventory_repository import (
 from src.infrastructure.repositories.orm_menu_repository import (
     OrmMenuRepository,
 )
-from src.infrastructure.repositories.orm_order_persister import (
-    OrmOrderPersister,
+from src.infrastructure.repositories.orm_order_repository import (
+    OrmOrderRepository,
 )
 
 
 class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
-    """SQLAlchemy ORM 기반 Unit of Work 구현체입니다."""
+    """SQLAlchemy 세션을 활용한 UoW 실제 구현체"""
 
     def __init__(self, session_factory: Callable[[], Session]):
         self.session_factory = session_factory
@@ -23,7 +23,7 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
         self.session: Session = self.session_factory()
         self.menus = OrmMenuRepository(self.session)
         self.inventories = OrmInventoryRepository(self.session)
-        self.orders = OrmOrderPersister(self.session)
+        self.orders = OrmOrderRepository(self.session)
         return super().__enter__()
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
