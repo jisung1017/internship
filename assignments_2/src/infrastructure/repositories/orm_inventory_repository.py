@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session, joinedload
 
+from src.application.inventory_repository import InventoryRepository
 from src.domain.ingredient import Ingredient
 from src.domain.inventory import Inventory
 from src.domain.inventory_item import InventoryItem
@@ -7,7 +8,7 @@ from src.domain.quantity import Quantity
 from src.infrastructure.models import IngredientModel, InventoryItemModel
 
 
-class OrmInventoryRepository:
+class OrmInventoryRepository(InventoryRepository):
     """SQLAlchemy ORM 기반 재고 레포지토리 구현체"""
 
     def __init__(self, session: Session):

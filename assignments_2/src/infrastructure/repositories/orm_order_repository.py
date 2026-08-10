@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
+from src.application.order_repository import OrderRepository
 from src.domain.money import Money
 from src.domain.order import Order
 from src.domain.order_record import OrderRecord, OrderRecordItem
@@ -12,7 +13,7 @@ from src.infrastructure.models import (
 )
 
 
-class OrmOrderRepository:
+class OrmOrderRepository(OrderRepository):
     """SQLAlchemy ORM 기반 OrderRepository 구현체"""
 
     def __init__(self, session: Session):
