@@ -41,12 +41,38 @@ class MenuResponse(BaseModel):
 
 # --- Order Schemas ---
 class OrderItemRequest(BaseModel):
-    menu_name: str = Field(..., description="메뉴 이름")
-    quantity: int = Field(..., gt=0, description="수량")
-    selected_options: list[str] = Field(default_factory=list, description="선택한 옵션 이름 목록")
+    menu_name: str = Field(..., description="메뉴 이름", examples=["아메리카노"])
+    quantity: int = Field(..., gt=0, description="수량", examples=[1])
+    selected_options: list[str] = Field(
+        default_factory=list, 
+        description="선택 옵션 목록", 
+        examples=[["HOT", "샷추가"]]
+    )
 
 class CreateOrderRequest(BaseModel):
     items: list[OrderItemRequest] = Field(..., min_length=1, description="주문 항목 목록")
+
+    # 대표 예시 정의
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "items": [
+                        {
+                            "menu_name": "아메리카노",
+                            "quantity": 1,
+                            "selected_options": ["HOT", "샷추가"]
+                        },
+                        {
+                            "menu_name": "카페라떼",
+                            "quantity": 2,
+                            "selected_options": ["ICE"]
+                        }
+                    ]
+                }
+            ]
+        }
+    }
 
 class OrderResponse(BaseModel):
     order_uuid: UUID = Field(..., description="주문 UUID")
@@ -84,8 +110,8 @@ class InventoryItemResponse(BaseModel):
     unit: str
 
 class RestockRequest(BaseModel):
-    ingredient_name: str
-    quantity: int = Field(..., gt=0)
+    ingredient_name: str = Field(..., description="재료명", examples=["원두"])
+    quantity: int = Field(..., gt=0, description="입고 수량", examples=[100])
 
 class OrderRecordItemResponse(BaseModel):
     menu_name: str
