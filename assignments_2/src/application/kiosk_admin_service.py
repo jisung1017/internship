@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
-from src.application.inventory_persister import InventoryPersister
-from src.application.order_history_reader import OrderHistoryReader
+from src.application.unit_of_work import AbstractUnitOfWork
 from src.domain.ingredient import Ingredient
 from src.domain.inventory import Inventory
 from src.domain.money import Money
@@ -11,33 +10,29 @@ from src.domain.quantity import Quantity
 
 @dataclass
 class KioskAdminService:
-    """관리자(개발자) 모드 유스케이스 서비스입니다."""
+    """관리자 유스케이스 조율 애플리케이션 서비스"""
 
-    inventory: Inventory
-    inventory_persister: InventoryPersister | None = None
-    order_history_reader: OrderHistoryReader | None = None
+    uow: AbstractUnitOfWork
 
     def get_inventory(self) -> Inventory:
-        return self.inventory
+        with self.uow:
+            return self.uow.inventories.load()
 
     def restock(self, ingredient_name: str, quantity: Quantity) -> None:
-        self.inventory.restock(Ingredient(ingredient_name), quantity)
-        self._persist_inventory()
+        with self.uow:
+            inventory = self.uow.inventories.load()
+            inventory.restock(Ingredient(ingredient_name), quantity)
+            self.uow.inventories.save(inventory)
+            self.uow.commit()
 
     def get_today_orders(self) -> list[OrderRecord]:
-        if self.order_history_reader is None:
-            return []
-
-        return self.order_history_reader.find_today()
+        with self.uow:
+            return self.uow.orders.find_today()
 
     def get_today_sales_total(self) -> Money:
-        total = Money(0)
-
-        for record in self.get_today_orders():
-            total = total.add(record.total_price)
-
-        return total
-
-    def _persist_inventory(self) -> None:
-        if self.inventory_persister is not None:
-            self.inventory_persister.persist(self.inventory)
+        with self.uow:
+            records = self.uow.orders.find_today()
+            total = Money(0)
+            for record in records:
+                total = total.add(record.total_price)
+            return total
