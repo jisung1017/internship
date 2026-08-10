@@ -111,6 +111,6 @@ def make_inventory(make_inventory_item):
 
 @pytest.fixture
 def make_payment():
-    def _make(balance: int = 10000) -> Payment:
-        return Payment(balance=Money(balance))
+    def _make(is_approved: bool = True) -> Payment:
+        return Payment(is_approved=is_approved)
     return _make
