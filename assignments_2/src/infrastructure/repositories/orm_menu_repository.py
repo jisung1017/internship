@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session, joinedload
 
+from src.application.menu_repository import MenuRepository
 from src.domain.ingredient import Ingredient
 from src.domain.menu import Menu
 from src.domain.money import Money
@@ -15,7 +16,7 @@ from src.infrastructure.models import (
 )
 
 
-class OrmMenuRepository:
+class OrmMenuRepository(MenuRepository):
     """SQLAlchemy ORM 기반 메뉴 레포지토리 구현체"""
 
     def __init__(self, session: Session):
