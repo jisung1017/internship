@@ -46,15 +46,13 @@ class OrderItemRequest(BaseModel):
     selected_options: list[str] = Field(default_factory=list, description="선택한 옵션 이름 목록")
 
 class CreateOrderRequest(BaseModel):
-    payment_balance: int = Field(..., ge=0, description="투입 결제 금액")
     items: list[OrderItemRequest] = Field(..., min_length=1, description="주문 항목 목록")
 
 class OrderResponse(BaseModel):
-    order_uuid: UUID = Field(..., description="외부 제공용 주문 고유 UUID")
-    client_uuid: UUID = Field(..., description="요청한 키오스크 단말기 UUID")
+    order_uuid: UUID = Field(..., description="주문 UUID")
+    client_uuid: UUID = Field(..., description="클라이언트 UUID")
     total_price: int
-    remaining_balance: int
-    message: str = "주문이 성공적으로 완료되었습니다."
+    message: str = "결제에 성공했습니다."
 
 class OrderDetailResponse(BaseModel):
     order_uuid: UUID
