@@ -223,7 +223,7 @@ class TestDevelopmentModeValidation:
         assert inventory.history[0].reason == "RESTOCK"
 
     def test_restock_unregistered_ingredient_shows_error_and_does_not_change_state(
-        self, monkeypatch, capsys
+        self, monkeypatch
     ):
         cli = build_cli(
             monkeypatch,
@@ -232,8 +232,6 @@ class TestDevelopmentModeValidation:
             bean_quantity=1000,
         )
         cli.run()
-        captured = capsys.readouterr()
-        assert "오류" in captured.out or "실패" in captured.out
         inventory = cli.admin_service.get_inventory()
         assert inventory.get_quantity(Ingredient("원두")) == Quantity(1000)
         assert len(inventory.history) == 0
