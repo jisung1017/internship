@@ -18,6 +18,7 @@ from src.infrastructure.models import (
     RecipeItemModel,
 )
 
+
 class OrmMenuRepository(MenuRepository):
     def __init__(self, session: Session):
         self._session = session
@@ -56,15 +57,21 @@ class OrmMenuRepository(MenuRepository):
     def _to_domain(self, menu_model: MenuModel) -> Menu:
         recipe_items = [
             RecipeItem(
-                ingredient=Ingredient(name=r.ingredient.name, unit=r.ingredient.unit),
+                ingredient=Ingredient(
+                    name=r.ingredient.name, unit=r.ingredient.unit
+                ),
                 quantity=Quantity(r.quantity),
-            ) for r in menu_model.recipes
+            )
+            for r in menu_model.recipes
         ]
-        
+
         option_groups = [
             OptionGroup(
                 option=Option(
                     name=og.option.name,
+                    default_min=Quantity(og.option.default_min_select),
+                    default_max=Quantity(og.option.default_max_select),
+                    selection_mode=og.option.selection_mode,
                     items=[
                         OptionItem(
                             name=oi.name,
@@ -73,21 +80,29 @@ class OrmMenuRepository(MenuRepository):
                                 items=[
                                     RecipeItem(
                                         ingredient=Ingredient(
-                                            name=ori.ingredient.name, unit=ori.ingredient.unit
+                                            name=ori.ingredient.name,
+                                            unit=ori.ingredient.unit,
                                         ),
                                         quantity=Quantity(ori.quantity),
-                                    ) for ori in oi.recipes
+                                    )
+                                    for ori in oi.recipes
                                 ]
                             ),
-                        ) for oi in og.option.items
+                        )
+                        for oi in og.option.items
                     ],
                 ),
-                min_quantity=Quantity(og.min_select),
-                max_quantity=Quantity(og.max_select),
-                selection_mode=og.selection_mode,
-            ) for og in menu_model.option_groups
+                override_min_quantity=Quantity(og.override_min_select)
+                if og.override_min_select is not None
+                else None,
+                override_max_quantity=Quantity(og.override_max_select)
+                if og.override_max_select is not None
+                else None,
+                override_selection_mode=og.override_selection_mode,
+            )
+            for og in menu_model.option_groups
         ]
-        
+
         return Menu(
             name=menu_model.name,
             price=Money(menu_model.price),
