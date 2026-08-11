@@ -91,6 +91,7 @@ CREATE TABLE option_master (
     default_min_select INTEGER NOT NULL DEFAULT 0,
     default_max_select INTEGER NOT NULL DEFAULT 1,
     selection_mode TEXT NOT NULL DEFAULT 'choice',
+    default_option_name TEXT NULL,
 
     CONSTRAINT pk_option_master
         PRIMARY KEY (id),
@@ -169,6 +170,7 @@ CREATE TABLE option_group (
     override_min_select INTEGER NULL,
     override_max_select INTEGER NULL,
     override_selection_mode TEXT NULL,
+    override_default_option_name TEXT NULL,
 
     CONSTRAINT pk_option_group
         PRIMARY KEY (id),

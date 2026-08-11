@@ -84,11 +84,11 @@ JOIN ingredient i
 -- Option Master (기본 제약조건 포함)
 -- ============================================================
 
-INSERT INTO option_master (name, default_min_select, default_max_select, selection_mode)
+INSERT INTO option_master (name, default_min_select, default_max_select, selection_mode, default_option_name)
 VALUES
-    ('온도', 1, 1, 'choice'),
-    ('샷 추가', 0, 4, 'count'),
-    ('시럽 추가', 0, 2, 'count');
+    ('온도', 1, 1, 'choice', 'HOT'),
+    ('샷 추가', 0, 4, 'count', NULL),
+    ('시럽 추가', 0, 2, 'count', NULL);
 
 -- ============================================================
 -- Option Item
@@ -132,32 +132,34 @@ JOIN ingredient i
 -- Option Group (PostgreSQL NULL 타입 명시적 캐스팅 보정)
 -- ============================================================
 
-INSERT INTO option_group (menu_id, option_id, override_min_select, override_max_select, override_selection_mode)
+INSERT INTO option_group (menu_id, option_id, override_min_select, override_max_select, override_selection_mode, override_default_option_name)
 SELECT
     m.id,
     om.id,
     v.override_min,
     v.override_max,
-    v.override_mode
+    v.override_mode,
+    v.override_default
 FROM (
     VALUES
-        (1,  '아메리카노', '온도', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
-        (2,  '아메리카노', '샷 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
-        (3,  '아메리카노', '시럽 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
+        (1,  '아메리카노', '온도', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT), CAST(NULL AS TEXT)),
+        (2,  '아메리카노', '샷 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT), CAST(NULL AS TEXT)),
+        (3,  '아메리카노', '시럽 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT), CAST(NULL AS TEXT)),
 
-        (4,  '카페라떼', '온도', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
-        (5,  '카페라떼', '샷 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
-        (6,  '카페라떼', '시럽 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
+        (4,  '카페라떼', '온도', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT), CAST(NULL AS TEXT)),
+        (5,  '카페라떼', '샷 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT), CAST(NULL AS TEXT)),
+        (6,  '카페라떼', '시럽 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT), CAST(NULL AS TEXT)),
 
-        (7,  '에스프레소', '샷 추가', CAST(NULL AS INTEGER), 2, CAST(NULL AS TEXT)),
+        (7,  '에스프레소', '샷 추가', CAST(NULL AS INTEGER), 2, CAST(NULL AS TEXT), CAST(NULL AS TEXT)),
 
-        (8,  '카푸치노', '샷 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
-        (9,  '카푸치노', '시럽 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
+        (8,  '카푸치노', '온도', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT), CAST(NULL AS TEXT)),
+        (9,  '카푸치노', '샷 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT), CAST(NULL AS TEXT)),
+        (10, '카푸치노', '시럽 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT), CAST(NULL AS TEXT)),
 
-        (10, '카라멜마키아토', '온도', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
-        (11, '카라멜마키아토', '샷 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
-        (12, '카라멜마키아토', '시럽 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT))
-) AS v(seq, menu_name, option_name, override_min, override_max, override_mode)
+        (11, '카라멜마키아토', '온도', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT), CAST(NULL AS TEXT)),
+        (12, '카라멜마키아토', '샷 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT), CAST(NULL AS TEXT)),
+        (13, '카라멜마키아토', '시럽 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT), CAST(NULL AS TEXT))
+) AS v(seq, menu_name, option_name, override_min, override_max, override_mode, override_default)
 JOIN menu m
     ON m.name = v.menu_name
 JOIN option_master om
