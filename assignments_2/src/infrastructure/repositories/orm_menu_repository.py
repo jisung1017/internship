@@ -34,6 +34,7 @@ class OrmMenuRepository(MenuRepository):
                 .joinedload(OptionItemModel.recipes)
                 .joinedload(OptionRecipeItemModel.ingredient),
             )
+            .order_by(MenuModel.id) 
             .all()
         )
         return [self._to_domain(m) for m in models]

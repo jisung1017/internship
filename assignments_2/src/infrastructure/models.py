@@ -25,7 +25,10 @@ class MenuModel(Base):
         "RecipeItemModel", back_populates="menu", cascade="all, delete-orphan"
     )
     option_groups = relationship(
-        "OptionGroupModel", back_populates="menu", cascade="all, delete-orphan"
+        "OptionGroupModel",
+        back_populates="menu",
+        cascade="all, delete-orphan",
+        order_by="OptionGroupModel.id",
     )
 
 
@@ -55,7 +58,10 @@ class OptionModel(Base):
     default_option_name = Column(Text, nullable=True)
 
     items = relationship(
-        "OptionItemModel", back_populates="option", cascade="all, delete-orphan"
+        "OptionItemModel",
+        back_populates="option",
+        cascade="all, delete-orphan",
+        order_by="OptionItemModel.id",
     )
 
 
@@ -138,7 +144,10 @@ class OrderModel(Base):
     )
 
     items = relationship(
-        "OrderItemModel", back_populates="order", cascade="all, delete-orphan"
+        "OrderItemModel",
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="OrderItemModel.id",
     )
 
 
@@ -158,6 +167,7 @@ class OrderItemModel(Base):
         "OrderItemOptionModel",
         back_populates="order_item",
         cascade="all, delete-orphan",
+        order_by="OrderItemOptionModel.id",
     )
 
 
