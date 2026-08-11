@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 # --- Menu Schemas ---
 class OptionItemResponse(BaseModel):
+    id: int = Field(..., description="옵션 아이템 PK ID")
     name: str
     additional_price: int
 
@@ -34,6 +35,7 @@ class MenuResponse(BaseModel):
                     selection_mode=group.selection_mode,
                     options=[
                         OptionItemResponse(
+                            id=opt.id or 0,
                             name=opt.name,
                             additional_price=opt.additional_price.amount,
                         )
@@ -49,9 +51,14 @@ class MenuResponse(BaseModel):
 class OrderItemRequest(BaseModel):
     menu_name: str = Field(..., description="메뉴 이름", examples=["아메리카노"])
     quantity: int = Field(..., gt=0, description="주문 수량", examples=[1])
+    selected_option_ids: list[int] = Field(
+        default_factory=list,
+        description="선택한 옵션 아이템 PK ID 목록",
+        examples=[[1, 3]],
+    )
     selected_options: list[str] = Field(
         default_factory=list,
-        description="선택한 옵션 이름 목록",
+        description="선택한 옵션 이름 목록 (하위 호환용)",
         examples=[["HOT", "샷 추가"]],
     )
 
@@ -69,12 +76,12 @@ class CreateOrderRequest(BaseModel):
                         {
                             "menu_name": "아메리카노",
                             "quantity": 1,
-                            "selected_options": ["HOT", "샷 추가"],
+                            "selected_option_ids": [1, 3],
                         },
                         {
                             "menu_name": "카페라떼",
                             "quantity": 2,
-                            "selected_options": ["ICE"],
+                            "selected_option_ids": [2],
                         },
                     ]
                 }
@@ -90,10 +97,16 @@ class OrderResponse(BaseModel):
     message: str = "주문이 성공적으로 접수되었습니다."
 
 
+class OrderItemOptionResponse(BaseModel):
+    option_name: str
+    additional_price: int
+
+
 class OrderRecordItemResponse(BaseModel):
     menu_name: str
     quantity: int
     line_total: int
+    selected_options: list[OrderItemOptionResponse] = Field(default_factory=list)
 
 
 class OrderDetailResponse(BaseModel):
@@ -103,9 +116,9 @@ class OrderDetailResponse(BaseModel):
     items: list[OrderRecordItemResponse]
 
     @classmethod
-    def from_domain(cls, order_uuid: UUID, record) -> "OrderDetailResponse":
+    def from_domain(cls, record) -> "OrderDetailResponse":
         return cls(
-            order_uuid=order_uuid,
+            order_uuid=record.order_uuid,
             created_at=record.created_at.isoformat(),
             total_price=record.total_price.amount,
             items=[
@@ -113,6 +126,13 @@ class OrderDetailResponse(BaseModel):
                     menu_name=item.menu_name,
                     quantity=item.quantity,
                     line_total=item.line_total.amount,
+                    selected_options=[
+                        OrderItemOptionResponse(
+                            option_name=opt.option_name,
+                            additional_price=opt.additional_price.amount,
+                        )
+                        for opt in item.selected_options
+                    ],
                 )
                 for item in record.items
             ],
@@ -152,6 +172,13 @@ class OrderRecordResponse(BaseModel):
                     menu_name=item.menu_name,
                     quantity=item.quantity,
                     line_total=item.line_total.amount,
+                    selected_options=[
+                        OrderItemOptionResponse(
+                            option_name=opt.option_name,
+                            additional_price=opt.additional_price.amount,
+                        )
+                        for opt in item.selected_options
+                    ],
                 )
                 for item in record.items
             ],
