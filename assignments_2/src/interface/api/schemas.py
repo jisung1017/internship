@@ -8,18 +8,12 @@ class OptionItemResponse(BaseModel):
     additional_price: int
 
 
-class OptionResponse(BaseModel):
-    name: str
-    additional_price: int
-    items: list[OptionItemResponse]
-
-
 class OptionGroupResponse(BaseModel):
     name: str
     min_quantity: int
     max_quantity: int
     selection_mode: str
-    options: list[OptionResponse]
+    options: list[OptionItemResponse]
 
 
 class MenuResponse(BaseModel):
@@ -39,16 +33,9 @@ class MenuResponse(BaseModel):
                     max_quantity=group.max_quantity.value,
                     selection_mode=group.selection_mode,
                     options=[
-                        OptionResponse(
+                        OptionItemResponse(
                             name=opt.name,
                             additional_price=opt.additional_price.amount,
-                            items=[
-                                OptionItemResponse(
-                                    name=item.name,
-                                    additional_price=item.additional_price.amount,
-                                )
-                                for item in opt.items
-                            ],
                         )
                         for opt in group.options
                     ],
