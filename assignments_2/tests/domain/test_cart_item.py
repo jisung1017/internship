@@ -4,7 +4,7 @@ from src.domain.cart_item import CartItem
 from src.domain.ingredient import Ingredient
 from src.domain.menu import Menu
 from src.domain.money import Money
-from src.domain.option import Option
+from src.domain.option_item import OptionItem
 from src.domain.quantity import Quantity
 from src.domain.recipe import Recipe
 from src.domain.recipe_item import RecipeItem
@@ -22,8 +22,8 @@ def make_menu(
 def make_option(
         name:str = "옵션",
         price:int = 500
-) -> Option:
-    return Option(name=name, additional_price=Money(price))
+) -> OptionItem:
+    return OptionItem(name=name, additional_price=Money(price))
 
 
 class TestCartItemValidation:
