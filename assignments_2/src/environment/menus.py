@@ -16,12 +16,12 @@ def create_menu() -> list[Menu]:
     cup = Ingredient("컵")
     syrup = Ingredient("시럽")
 
-    # 1. 마스터 옵션에 기본 제약조건 설정
     temperature_option = Option(
         name="온도",
         default_min=Quantity(1),
         default_max=Quantity(1),
         selection_mode="choice",
+        default_option_name="HOT",
         items=[
             OptionItem(name="HOT", additional_price=Money(0)),
             OptionItem(name="ICE", additional_price=Money(0)),
@@ -56,7 +56,6 @@ def create_menu() -> list[Menu]:
         ],
     )
 
-    # 2. OptionGroup 생성 시 별도 override 없이 깔끔하게 연결
     americano = Menu(
         name="아메리카노",
         price=Money(3000),
@@ -92,21 +91,21 @@ def create_menu() -> list[Menu]:
         ],
     )
 
-    espresso = Menu(
-        name="에스프레소",
-        price=Money(3500),
+    cappuccino = Menu(
+        name="카푸치노",
+        price=Money(4500),
         recipe=Recipe(
             items=[
                 RecipeItem(bean, Quantity(10)),
+                RecipeItem(milk, Quantity(40)),
                 RecipeItem(cup, Quantity(1)),
             ]
         ),
         option_groups=[
-            OptionGroup(
-                option=shot_option,
-                override_max_quantity=Quantity(2),  # 에스프레소만 샷 추가 최대 2개로 제약 override 예시
-            )
+            OptionGroup(option=temperature_option),
+            OptionGroup(option=shot_option),
+            OptionGroup(option=syrup_option),
         ],
     )
 
-    return [americano, latte, espresso]
+    return [americano, latte, cappuccino]

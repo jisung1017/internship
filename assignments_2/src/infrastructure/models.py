@@ -52,6 +52,7 @@ class OptionModel(Base):
     default_min_select = Column(Integer, nullable=False, default=0)
     default_max_select = Column(Integer, nullable=False, default=1)
     selection_mode = Column(Text, nullable=False, default="choice")
+    default_option_name = Column(Text, nullable=True)
 
     items = relationship(
         "OptionItemModel", back_populates="option", cascade="all, delete-orphan"
@@ -105,6 +106,7 @@ class OptionGroupModel(Base):
     override_min_select = Column(Integer, nullable=True)
     override_max_select = Column(Integer, nullable=True)
     override_selection_mode = Column(Text, nullable=True)
+    override_default_option_name = Column(Text, nullable=True)
 
     menu = relationship("MenuModel", back_populates="option_groups")
     option = relationship("OptionModel")
