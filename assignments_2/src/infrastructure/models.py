@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, Text, Uuid
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, Text, Uuid, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -116,6 +116,9 @@ class OptionGroupModel(Base):
     menu = relationship("MenuModel", back_populates="option_groups")
     option = relationship("OptionModel")
 
+    __table_args__ = (
+        UniqueConstraint("menu_id", "option_id", name="uq_menu_option"),
+    )
 
 class InventoryItemModel(Base):
     __tablename__ = "inventory"
