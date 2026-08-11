@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 from src.domain.money import Money
-from src.domain.option_item import OptionItem
 from src.domain.option_group import OptionGroup
+from src.domain.option_item import OptionItem
 from src.domain.recipe import Recipe
+
 
 @dataclass
 class Menu:
@@ -35,6 +36,14 @@ class Menu:
             option = group.find_option_by_name(name)
             if option is not None:
                 return option
+        return None
+
+    def find_option_item_by_id(self, item_id: int) -> OptionItem | None:
+        """옵션 아이템의 PK ID로 도메인 객체를 탐색합니다."""
+        for group in self.option_groups:
+            for item in group.options:
+                if item.id == item_id:
+                    return item
         return None
 
     def validate_selected_options(self, selected_options: list[OptionItem]) -> None:

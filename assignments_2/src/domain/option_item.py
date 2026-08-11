@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-
 from src.domain.money import Money
 from src.domain.recipe import Recipe
 
@@ -9,6 +8,7 @@ class OptionItem:
     name: str
     additional_price: Money
     recipe: Recipe = field(default_factory=lambda: Recipe(items=[]))
+    id: int | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str):
