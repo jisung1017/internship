@@ -7,11 +7,12 @@ SELECTION_MODES = {"choice", "count"}
 
 @dataclass
 class Option:
-    """옵션 마스터 (대분류) - 기본 제약조건(default)을 보유"""
+    """옵션 마스터 (대분류) - 기본 제약조건 및 기본 선택 옵션명(default_option_name) 보유"""
     name: str
     default_min: Quantity = field(default_factory=lambda: Quantity(0))
     default_max: Quantity = field(default_factory=lambda: Quantity(1))
     selection_mode: str = "choice"
+    default_option_name: str | None = None
     items: list[OptionItem] = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -28,6 +29,10 @@ class Option:
             raise ValueError("기본 최소 선택 수량이 기본 최대 선택 수량보다 클 수 없습니다.")
         if self.selection_mode not in SELECTION_MODES:
             raise ValueError(f"selection_mode는 {SELECTION_MODES} 중 하나여야 합니다.")
+        if self.default_option_name is not None:
+            if not isinstance(self.default_option_name, str):
+                raise TypeError("default_option_name은 str 타입이어야 합니다.")
+            self.default_option_name = self.default_option_name.strip()
         if not isinstance(self.items, list):
             raise TypeError("Option items는 list 타입이어야 합니다.")
         for item in self.items:
