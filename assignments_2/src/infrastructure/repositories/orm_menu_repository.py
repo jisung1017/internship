@@ -72,6 +72,7 @@ class OrmMenuRepository(MenuRepository):
                     default_min=Quantity(og.option.default_min_select),
                     default_max=Quantity(og.option.default_max_select),
                     selection_mode=og.option.selection_mode,
+                    default_option_name=og.option.default_option_name,
                     items=[
                         OptionItem(
                             name=oi.name,
@@ -99,6 +100,7 @@ class OrmMenuRepository(MenuRepository):
                 if og.override_max_select is not None
                 else None,
                 override_selection_mode=og.override_selection_mode,
+                override_default_option_name=og.override_default_option_name,
             )
             for og in menu_model.option_groups
         ]
