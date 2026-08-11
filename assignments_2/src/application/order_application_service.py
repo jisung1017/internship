@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from uuid import UUID
-
 from src.application.cart_service import CartService
 from src.application.unit_of_work import AbstractUnitOfWork
 from src.domain.cart import Cart
@@ -31,7 +30,6 @@ class OrderApplicationService:
             order = Order.from_cart(cart)
             requirements = order.get_recipe_requirements()
 
-            # 1. 주문 항목에서 요구하는 재료 이름들을 중복 없이 추출
             ingredient_names = list(
                 {
                     recipe_item.ingredient.name
@@ -40,24 +38,19 @@ class OrderApplicationService:
                 }
             )
 
-            # 2. load_for_update()를 통해 해당 재료 행(Row)들에 비관적 락(SELECT ... FOR UPDATE) 적용
             current_inventory = (
                 inventory
                 if inventory is not None
                 else self.uow.inventories.load_for_update(ingredient_names)
             )
-
             try:
                 if not current_inventory.can_consume_all(requirements):
                     raise OutOfStockError()
-
                 payment.pay(order)
                 current_inventory.consume_all(requirements)
-
                 self.uow.orders.save(order)
                 self.uow.inventories.save(current_inventory)
                 self.uow.commit()
-
                 return order
             finally:
                 cart.clear()
@@ -67,19 +60,28 @@ class OrderApplicationService:
         items_dto: list,
         is_payment_approved: bool = True,
     ) -> Order:
-        """DTO 기반 주문 생성 유스케이스 (API 전용)"""
+        """DTO 요청 기반 주문 처리 (ID 및 이름 기반 파싱 모두 지원)"""
         with self.uow:
             available_menus = self.uow.menus.find_all()
             cart = Cart()
             for item in items_dto:
-                self.cart_service.add_item_by_names(
-                    cart=cart,
-                    available_menus=available_menus,
-                    menu_name=item.menu_name,
-                    quantity_val=item.quantity,
-                    selected_option_names=item.selected_options,
-                )
-
+                # selected_option_ids 우선 처리
+                if hasattr(item, "selected_option_ids") and item.selected_option_ids:
+                    self.cart_service.add_item_by_ids(
+                        cart=cart,
+                        available_menus=available_menus,
+                        menu_name=item.menu_name,
+                        quantity_val=item.quantity,
+                        selected_option_ids=item.selected_option_ids,
+                    )
+                else:
+                    self.cart_service.add_item_by_names(
+                        cart=cart,
+                        available_menus=available_menus,
+                        menu_name=item.menu_name,
+                        quantity_val=item.quantity,
+                        selected_option_names=getattr(item, "selected_options", []),
+                    )
             payment = Payment(is_approved=is_payment_approved)
             return self.place_order(cart=cart, payment=payment)
 
