@@ -5,21 +5,22 @@ from src.domain.quantity import Quantity
 
 SELECTION_MODES = {"choice", "count"}
 
+
 @dataclass
 class OptionGroup:
-    """메뉴와 옵션을 연결하는 매핑 및 제약조건 (DB의 매핑 테이블 역할)"""
+    """메뉴와 옵션을 연결하는 매핑 객체 - 필요 시 마스터 설정을 Override"""
     option: Option
-    min_quantity: Quantity = field(default_factory=lambda: Quantity(1))
-    max_quantity: Quantity = field(default_factory=lambda: Quantity(1))
-    selection_mode: str = "choice"
+    override_min_quantity: Quantity | None = None
+    override_max_quantity: Quantity | None = None
+    override_selection_mode: str | None = None
 
     def __post_init__(self):
         if not isinstance(self.option, Option):
             raise TypeError("OptionGroup option은 Option 타입이어야 합니다.")
-        if not isinstance(self.min_quantity, Quantity):
-            raise TypeError("OptionGroup min_quantity는 Quantity 타입이어야 합니다.")
-        if not isinstance(self.max_quantity, Quantity):
-            raise TypeError("OptionGroup max_quantity는 Quantity 타입이어야 합니다.")
+        if self.override_min_quantity is not None and not isinstance(self.override_min_quantity, Quantity):
+            raise TypeError("OptionGroup override_min_quantity는 Quantity 타입이어야 합니다.")
+        if self.override_max_quantity is not None and not isinstance(self.override_max_quantity, Quantity):
+            raise TypeError("OptionGroup override_max_quantity는 Quantity 타입이어야 합니다.")
         if self.min_quantity.is_greater_than(self.max_quantity):
             raise ValueError("최소 선택 수량이 최대 선택 수량보다 클 수 없습니다.")
         if self.selection_mode not in SELECTION_MODES:
@@ -30,8 +31,19 @@ class OptionGroup:
         return self.option.name
 
     @property
+    def min_quantity(self) -> Quantity:
+        return self.override_min_quantity if self.override_min_quantity is not None else self.option.default_min
+
+    @property
+    def max_quantity(self) -> Quantity:
+        return self.override_max_quantity if self.override_max_quantity is not None else self.option.default_max
+
+    @property
+    def selection_mode(self) -> str:
+        return self.override_selection_mode if self.override_selection_mode is not None else self.option.selection_mode
+
+    @property
     def options(self) -> list[OptionItem]:
-        """하위 호환성과 편의성을 위해 Option의 items를 반환"""
         return self.option.items
 
     def contains(self, option_item: OptionItem) -> bool:
