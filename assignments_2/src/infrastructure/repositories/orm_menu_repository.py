@@ -75,6 +75,7 @@ class OrmMenuRepository(MenuRepository):
                     default_option_name=og.option.default_option_name,
                     items=[
                         OptionItem(
+                            id=oi.id,  # DB PK 주입
                             name=oi.name,
                             additional_price=Money(oi.additional_price),
                             recipe=Recipe(
