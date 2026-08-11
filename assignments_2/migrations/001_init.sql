@@ -171,24 +171,27 @@ CREATE TABLE option_group (
     override_max_select INTEGER NULL,
     override_default_option_name TEXT NULL,
 
+    -- 1. 기본키 (PK)
     CONSTRAINT pk_option_group
         PRIMARY KEY (id),
-
+    
+    -- 2. 메뉴 + 옵션 중복 조합 방지 (복합 유니크)
+    CONSTRAINT uq_option_group_menu_option 
+        UNIQUE (menu_id, option_id),
+    
+    -- 3. 외래키 (FK)
+    CONSTRAINT fk_option_group_menu 
+        FOREIGN KEY (menu_id) REFERENCES menu(id) ON DELETE CASCADE,
+        
+    CONSTRAINT fk_option_group_option 
+        FOREIGN KEY (option_id) REFERENCES option_master(id) ON DELETE RESTRICT,
+    
+    -- 4. 체크 제약조건 (CHECK)
     CONSTRAINT ck_option_group_override_min
         CHECK (override_min_select IS NULL OR override_min_select >= 0),
 
     CONSTRAINT ck_option_group_override_max
-        CHECK (override_max_select IS NULL OR override_max_select >= 1),
-
-    CONSTRAINT fk_option_group_menu
-        FOREIGN KEY (menu_id)
-        REFERENCES menu(id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_option_group_option
-        FOREIGN KEY (option_id)
-        REFERENCES option_master(id)
-        ON DELETE RESTRICT
+        CHECK (override_max_select IS NULL OR override_max_select >= 1)
 );
 
 -- ============================================================
