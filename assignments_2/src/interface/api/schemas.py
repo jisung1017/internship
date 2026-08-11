@@ -1,10 +1,18 @@
 from uuid import UUID
 from pydantic import BaseModel, Field
 
+
 # --- Menu Schemas ---
+class OptionItemResponse(BaseModel):
+    name: str
+    additional_price: int
+
+
 class OptionResponse(BaseModel):
     name: str
     additional_price: int
+    items: list[OptionItemResponse]
+
 
 class OptionGroupResponse(BaseModel):
     name: str
@@ -12,6 +20,7 @@ class OptionGroupResponse(BaseModel):
     max_quantity: int
     selection_mode: str
     options: list[OptionResponse]
+
 
 class MenuResponse(BaseModel):
     name: str
@@ -32,27 +41,39 @@ class MenuResponse(BaseModel):
                     options=[
                         OptionResponse(
                             name=opt.name,
-                            additional_price=opt.additional_price.amount
-                        ) for opt in group.options
-                    ]
-                ) for group in menu.option_groups
-            ]
+                            additional_price=opt.additional_price.amount,
+                            items=[
+                                OptionItemResponse(
+                                    name=item.name,
+                                    additional_price=item.additional_price.amount,
+                                )
+                                for item in opt.items
+                            ],
+                        )
+                        for opt in group.options
+                    ],
+                )
+                for group in menu.option_groups
+            ],
         )
+
 
 # --- Order Schemas ---
 class OrderItemRequest(BaseModel):
     menu_name: str = Field(..., description="메뉴 이름", examples=["아메리카노"])
-    quantity: int = Field(..., gt=0, description="수량", examples=[1])
+    quantity: int = Field(..., gt=0, description="주문 수량", examples=[1])
     selected_options: list[str] = Field(
-        default_factory=list, 
-        description="선택 옵션 목록", 
-        examples=[["HOT", "샷추가"]]
+        default_factory=list,
+        description="선택한 옵션 이름 목록",
+        examples=[["HOT", "샷 추가"]],
     )
 
-class CreateOrderRequest(BaseModel):
-    items: list[OrderItemRequest] = Field(..., min_length=1, description="주문 항목 목록")
 
-    # 대표 예시 정의
+class CreateOrderRequest(BaseModel):
+    items: list[OrderItemRequest] = Field(
+        ..., min_length=1, description="주문 항목 목록"
+    )
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -61,30 +82,38 @@ class CreateOrderRequest(BaseModel):
                         {
                             "menu_name": "아메리카노",
                             "quantity": 1,
-                            "selected_options": ["HOT", "샷추가"]
+                            "selected_options": ["HOT", "샷 추가"],
                         },
                         {
                             "menu_name": "카페라떼",
                             "quantity": 2,
-                            "selected_options": ["ICE"]
-                        }
+                            "selected_options": ["ICE"],
+                        },
                     ]
                 }
             ]
         }
     }
 
+
 class OrderResponse(BaseModel):
-    order_uuid: UUID = Field(..., description="주문 UUID")
-    client_uuid: UUID = Field(..., description="클라이언트 UUID")
+    order_uuid: UUID = Field(..., description="생성된 주문 UUID")
+    client_uuid: UUID = Field(..., description="요청한 클라이언트 UUID")
     total_price: int
-    message: str = "결제에 성공했습니다."
+    message: str = "주문이 성공적으로 접수되었습니다."
+
+
+class OrderRecordItemResponse(BaseModel):
+    menu_name: str
+    quantity: int
+    line_total: int
+
 
 class OrderDetailResponse(BaseModel):
     order_uuid: UUID
     created_at: str
     total_price: int
-    items: list["OrderRecordItemResponse"]
+    items: list[OrderRecordItemResponse]
 
     @classmethod
     def from_domain(cls, order_uuid: UUID, record) -> "OrderDetailResponse":
@@ -109,14 +138,15 @@ class InventoryItemResponse(BaseModel):
     quantity: int
     unit: str
 
-class RestockRequest(BaseModel):
-    ingredient_name: str = Field(..., description="재료명", examples=["원두"])
-    quantity: int = Field(..., gt=0, description="입고 수량", examples=[100])
 
-class OrderRecordItemResponse(BaseModel):
-    menu_name: str
-    quantity: int
-    line_total: int
+class RestockRequest(BaseModel):
+    ingredient_name: str = Field(
+        ..., description="재입고할 재고 이름", examples=["원두"]
+    )
+    quantity: int = Field(
+        ..., gt=0, description="재입고 수량", examples=[100]
+    )
+
 
 class OrderRecordResponse(BaseModel):
     id: int
@@ -134,10 +164,12 @@ class OrderRecordResponse(BaseModel):
                 OrderRecordItemResponse(
                     menu_name=item.menu_name,
                     quantity=item.quantity,
-                    line_total=item.line_total.amount
-                ) for item in record.items
-            ]
+                    line_total=item.line_total.amount,
+                )
+                for item in record.items
+            ],
         )
+
 
 class TodaySalesResponse(BaseModel):
     total_sales: int
