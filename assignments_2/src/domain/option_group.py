@@ -49,12 +49,6 @@ class OptionGroup:
         return self.override_default_option_name if self.override_default_option_name is not None else self.option.default_option_name
 
     @property
-    def default_option(self) -> OptionItem | None:
-        if not self.default_option_name:
-            return None
-        return self.find_option_by_name(self.default_option_name)
-
-    @property
     def options(self) -> list[OptionItem]:
         return self.option.items
 
