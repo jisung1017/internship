@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy.orm import Session
-
+from sqlalchemy.orm import Session, joinedload
 from src.application.order_repository import OrderRepository
 from src.domain.money import Money
 from src.domain.order import Order
@@ -39,7 +38,6 @@ class OrmOrderRepository(OrderRepository):
                 )
                 order_item_model.options.append(option_model)
             order_model.items.append(order_item_model)
-
         self._session.add(order_model)
         self._session.flush()
         order.id = order_model.id
@@ -49,6 +47,9 @@ class OrmOrderRepository(OrderRepository):
         order_model = (
             self._session.query(OrderModel)
             .filter(OrderModel.order_uuid == order_uuid)
+            .options(
+                joinedload(OrderModel.items).joinedload(OrderItemModel.options)
+            )
             .first()
         )
         if not order_model:
@@ -63,6 +64,9 @@ class OrmOrderRepository(OrderRepository):
         order_models = (
             self._session.query(OrderModel)
             .filter(OrderModel.created_at >= today_start)
+            .options(
+                joinedload(OrderModel.items).joinedload(OrderItemModel.options)
+            )
             .order_by(OrderModel.id)
             .all()
         )
