@@ -81,88 +81,87 @@ JOIN ingredient i
     ON i.name = v.ingredient_name;
 
 -- ============================================================
--- Option Group
--- (option_group.menu_id 는 NOT NULL FK 라서, 원본에서 여러 메뉴가
---  공유하던 temperature_group/shot_group/syrup_group 을
---  메뉴별로 각각 별도 행으로 만든다)
---
--- ⚠️ INSERT ... SELECT ... FROM (VALUES ...) JOIN ... 은 삽입 순서를
---    보장하지 않는다. option_group.id 순서가 곧 CLI가 옵션을 물어보는
---    순서(온도 → 샷추가 → 시럽추가)라서, 순서가 뒤바뀌면 CLI가
---    잘못된 그룹에 잘못된 형식(choice/count)의 입력을 요구하게 된다.
---    그래서 seq 컬럼으로 의도한 순서를 명시하고 ORDER BY로 강제한다.
+-- Option Master (기본 제약조건 포함)
 -- ============================================================
 
-INSERT INTO option_group (menu_id, name, min_select, max_select, selection_mode)
-SELECT
-    m.id,
-    v.name,
-    v.min_select,
-    v.max_select,
-    v.selection_mode
-FROM (
-    VALUES
-        (1,  '아메리카노', '온도', 1, 1, 'choice'),
-        (2,  '아메리카노', '샷추가', 0, 4, 'count'),
-        (3,  '아메리카노', '시럽추가', 0, 2, 'count'),
-
-        (4,  '카페라떼', '온도', 1, 1, 'choice'),
-        (5,  '카페라떼', '샷추가', 0, 4, 'count'),
-        (6,  '카페라떼', '시럽추가', 0, 2, 'count'),
-
-        (7,  '에스프레소', '샷추가', 0, 4, 'count'),
-
-        (8,  '카푸치노', '샷추가', 0, 4, 'count'),
-        (9,  '카푸치노', '시럽추가', 0, 2, 'count'),
-
-        (10, '카라멜마키아토', '온도', 1, 1, 'choice'),
-        (11, '카라멜마키아토', '샷추가', 0, 4, 'count'),
-        (12, '카라멜마키아토', '시럽추가', 0, 2, 'count')
-) AS v(seq, menu_name, name, min_select, max_select, selection_mode)
-JOIN menu m
-    ON m.name = v.menu_name
-ORDER BY v.seq;
+INSERT INTO option_master (name, default_min_select, default_max_select, selection_mode)
+VALUES
+    ('온도', 1, 1, 'choice'),
+    ('샷 추가', 0, 4, 'count'),
+    ('시럽 추가', 0, 2, 'count');
 
 -- ============================================================
 -- Option Item
 -- ============================================================
 
-INSERT INTO option_item (option_group_id, name, additional_price)
+INSERT INTO option_item (option_id, name, additional_price)
 SELECT
-    og.id,
-    v.option_name,
+    om.id,
+    v.item_name,
     v.price
-FROM option_group og
-JOIN (
+FROM (
     VALUES
-        (1, '온도', 'HOT', 0),
-        (2, '온도', 'ICE', 0),
-        (3, '샷추가', '샷추가', 500),
-        (4, '시럽추가', '시럽추가', 200)
-) AS v(seq, group_name, option_name, price)
-    ON v.group_name = og.name
-ORDER BY og.id, v.seq;
+        ('온도', 'HOT', 0),
+        ('온도', 'ICE', 0),
+        ('샷 추가', '샷 추가', 500),
+        ('시럽 추가', '시럽 추가', 200)
+) AS v(master_name, item_name, price)
+JOIN option_master om
+    ON om.name = v.master_name;
 
 -- ============================================================
 -- Option Recipe Item
--- (온도 옵션(HOT/ICE)은 원본에서도 레시피가 없어 그대로 비워둔다)
 -- ============================================================
 
-INSERT INTO option_recipe_item (option_id, ingredient_id, quantity)
+INSERT INTO option_recipe_item (option_item_id, ingredient_id, quantity)
 SELECT
     oi.id,
     i.id,
     v.quantity
-FROM option_item oi
-JOIN option_group og
-    ON og.id = oi.option_group_id
-JOIN (
+FROM (
     VALUES
-        ('샷추가', '원두', 10),
-        ('시럽추가', '시럽', 10)
-) AS v(group_name, ingredient_name, quantity)
-    ON v.group_name = og.name
+        ('샷 추가', '원두', 10),
+        ('시럽 추가', '시럽', 10)
+) AS v(item_name, ingredient_name, quantity)
+JOIN option_item oi
+    ON oi.name = v.item_name
 JOIN ingredient i
     ON i.name = v.ingredient_name;
+
+-- ============================================================
+-- Option Group (PostgreSQL NULL 타입 명시적 캐스팅 보정)
+-- ============================================================
+
+INSERT INTO option_group (menu_id, option_id, override_min_select, override_max_select, override_selection_mode)
+SELECT
+    m.id,
+    om.id,
+    v.override_min,
+    v.override_max,
+    v.override_mode
+FROM (
+    VALUES
+        (1,  '아메리카노', '온도', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
+        (2,  '아메리카노', '샷 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
+        (3,  '아메리카노', '시럽 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
+
+        (4,  '카페라떼', '온도', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
+        (5,  '카페라떼', '샷 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
+        (6,  '카페라떼', '시럽 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
+
+        (7,  '에스프레소', '샷 추가', CAST(NULL AS INTEGER), 2, CAST(NULL AS TEXT)),
+
+        (8,  '카푸치노', '샷 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
+        (9,  '카푸치노', '시럽 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
+
+        (10, '카라멜마키아토', '온도', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
+        (11, '카라멜마키아토', '샷 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT)),
+        (12, '카라멜마키아토', '시럽 추가', CAST(NULL AS INTEGER), CAST(NULL AS INTEGER), CAST(NULL AS TEXT))
+) AS v(seq, menu_name, option_name, override_min, override_max, override_mode)
+JOIN menu m
+    ON m.name = v.menu_name
+JOIN option_master om
+    ON om.name = v.option_name
+ORDER BY v.seq;
 
 COMMIT;
