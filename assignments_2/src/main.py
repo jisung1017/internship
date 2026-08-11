@@ -1,12 +1,12 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
 from src.application.cart_service import CartService
 from src.application.kiosk_admin_service import KioskAdminService
 from src.application.order_application_service import OrderApplicationService
 from src.domain.payment import Payment
 from src.infrastructure.db import DEFAULT_DATABASE_URL
+from src.infrastructure.models import Base
 from src.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
 from src.interface.cli import CLI
 
@@ -19,10 +19,12 @@ def main() -> None:
         sqlalchemy_url = db_url
 
     engine = create_engine(sqlalchemy_url, pool_pre_ping=True)
+
+    # ORM 모델 기반으로 DB 테이블이 없을 경우 자동 생성
+    Base.metadata.create_all(bind=engine)
+
     session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
     uow = SqlAlchemyUnitOfWork(session_factory=session_factory)
-
     order_app_service = OrderApplicationService(uow=uow)
     admin_service = KioskAdminService(uow=uow)
     cart_service = CartService()
