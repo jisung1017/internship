@@ -4,7 +4,11 @@ from sqlalchemy.orm import Session, joinedload
 from src.application.order_repository import OrderRepository
 from src.domain.money import Money
 from src.domain.order import Order
-from src.domain.order_record import OrderRecord, OrderRecordItem
+from src.domain.order_record import (
+    OrderRecord,
+    OrderRecordItem,
+    OrderRecordItemOption,
+)
 from src.infrastructure.models import (
     OrderItemModel,
     OrderItemOptionModel,
@@ -81,15 +85,26 @@ class OrmOrderRepository(OrderRepository):
             line_total = (
                 item_model.menu_price + options_total
             ) * item_model.quantity
+
+            selected_options = [
+                OrderRecordItemOption(
+                    option_name=opt.option_name,
+                    additional_price=Money(opt.additional_price),
+                )
+                for opt in item_model.options
+            ]
+
             items.append(
                 OrderRecordItem(
                     menu_name=item_model.menu_name,
                     quantity=item_model.quantity,
                     line_total=Money(line_total),
+                    selected_options=selected_options,
                 )
             )
         return OrderRecord(
             id=order_model.id,
+            order_uuid=order_model.order_uuid,
             created_at=order_model.created_at,
             total_price=Money(order_model.total_price),
             items=items,
