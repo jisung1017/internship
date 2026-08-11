@@ -91,7 +91,6 @@ def upgrade() -> None:
         sa.Column('option_id', sa.Integer(), nullable=False),
         sa.Column('override_min_select', sa.Integer(), nullable=True),
         sa.Column('override_max_select', sa.Integer(), nullable=True),
-        sa.Column('override_selection_mode', sa.Text(), nullable=True),
         sa.Column('override_default_option_name', sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(['menu_id'], ['menu.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['option_id'], ['option_master.id'], ondelete='RESTRICT'),

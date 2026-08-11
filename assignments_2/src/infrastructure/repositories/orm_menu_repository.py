@@ -101,7 +101,6 @@ class OrmMenuRepository(MenuRepository):
                 override_max_quantity=Quantity(og.override_max_select)
                 if og.override_max_select is not None
                 else None,
-                override_selection_mode=og.override_selection_mode,
                 override_default_option_name=og.override_default_option_name,
             )
             for og in menu_model.option_groups

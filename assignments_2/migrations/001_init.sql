@@ -169,7 +169,6 @@ CREATE TABLE option_group (
 
     override_min_select INTEGER NULL,
     override_max_select INTEGER NULL,
-    override_selection_mode TEXT NULL,
     override_default_option_name TEXT NULL,
 
     CONSTRAINT pk_option_group
@@ -180,9 +179,6 @@ CREATE TABLE option_group (
 
     CONSTRAINT ck_option_group_override_max
         CHECK (override_max_select IS NULL OR override_max_select >= 1),
-
-    CONSTRAINT ck_option_group_override_selection_mode
-        CHECK (override_selection_mode IS NULL OR override_selection_mode IN ('choice', 'count')),
 
     CONSTRAINT fk_option_group_menu
         FOREIGN KEY (menu_id)

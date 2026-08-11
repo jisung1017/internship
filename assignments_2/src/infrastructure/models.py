@@ -111,7 +111,6 @@ class OptionGroupModel(Base):
 
     override_min_select = Column(Integer, nullable=True)
     override_max_select = Column(Integer, nullable=True)
-    override_selection_mode = Column(Text, nullable=True)
     override_default_option_name = Column(Text, nullable=True)
 
     menu = relationship("MenuModel", back_populates="option_groups")

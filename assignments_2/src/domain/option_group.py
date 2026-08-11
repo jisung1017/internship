@@ -12,7 +12,6 @@ class OptionGroup:
     option: Option
     override_min_quantity: Quantity | None = None
     override_max_quantity: Quantity | None = None
-    override_selection_mode: str | None = None
     override_default_option_name: str | None = None
 
     def __post_init__(self):
@@ -24,8 +23,6 @@ class OptionGroup:
             raise TypeError("OptionGroup override_max_quantity는 Quantity 타입이어야 합니다.")
         if self.min_quantity.is_greater_than(self.max_quantity):
             raise ValueError("최소 선택 수량이 최대 선택 수량보다 클 수 없습니다.")
-        if self.selection_mode not in SELECTION_MODES:
-            raise ValueError(f"selection_mode는 {SELECTION_MODES} 중 하나여야 합니다.")
         if self.override_default_option_name is not None:
             if not isinstance(self.override_default_option_name, str):
                 raise TypeError("override_default_option_name은 str 타입이어야 합니다.")
@@ -45,8 +42,8 @@ class OptionGroup:
 
     @property
     def selection_mode(self) -> str:
-        return self.override_selection_mode if self.override_selection_mode is not None else self.option.selection_mode
-
+        return self.option.selection_mode
+    
     @property
     def default_option_name(self) -> str | None:
         return self.override_default_option_name if self.override_default_option_name is not None else self.option.default_option_name
