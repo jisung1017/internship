@@ -3,6 +3,7 @@ import pytest
 from src.application.cart_service import CartService
 from src.application.kiosk_admin_service import KioskAdminService
 from src.application.order_application_service import OrderApplicationService
+from src.application.unit_of_work import AbstractUnitOfWork
 from src.domain.ingredient import Ingredient
 from src.domain.inventory import Inventory
 from src.domain.inventory_item import InventoryItem
@@ -15,6 +16,57 @@ from src.domain.quantity import Quantity
 from src.domain.recipe import Recipe
 from src.domain.recipe_item import RecipeItem
 from src.interface.cli import CLI
+
+
+class FakeRepository:
+    def __init__(self):
+        self.items = []
+
+    def save(self, item):
+        self.items.append(item)
+
+    def find_all(self):
+        return self.items
+
+
+class FakeInventoryRepository:
+    def __init__(self, inventory=None):
+        self._inventory = inventory
+
+    def load(self) -> Inventory:
+        return self._inventory
+
+    def save(self, inventory: Inventory) -> None:
+        self._inventory = inventory
+
+
+class FakeOrderRepository:
+    def __init__(self):
+        self.orders = []
+
+    def save(self, order) -> None:
+        self.orders.append(order)
+
+    def find_by_uuid(self, order_uuid):
+        return None
+
+    def find_today(self) -> list:
+        return []
+
+
+class FakeUnitOfWork(AbstractUnitOfWork):
+    def __init__(self, inventory=None, menus=None, orders=None):
+        self.inventories = FakeInventoryRepository(inventory)
+        self.menus = menus or FakeRepository()
+        self.orders = orders or FakeOrderRepository()
+        self.committed = False
+        self.rolled_back = False
+
+    def commit(self) -> None:
+        self.committed = True
+
+    def rollback(self) -> None:
+        self.rolled_back = True
 
 
 def build_americano() -> Menu:
@@ -64,17 +116,18 @@ def get_quantity(inventory: Inventory, ingredient: Ingredient) -> Quantity:
     raise AssertionError(f"{ingredient.name} 재고를 찾을 수 없습니다.")
 
 
-def build_cli(monkeypatch, inputs: list[str], balance: int, bean_quantity: int) -> CLI:
+def build_cli(monkeypatch, inputs: list[str], is_approved: bool, bean_quantity: int) -> CLI:
     responses = iter(inputs)
     monkeypatch.setattr("builtins.input", lambda prompt="": next(responses))
 
     menus = [build_americano()]
     inventory = build_inventory(bean_quantity)
-    payment = Payment(balance=Money(balance))
+    payment = Payment(is_approved=is_approved)
 
     cart_service = CartService()
-    order_app_service = OrderApplicationService()
-    admin_service = KioskAdminService(inventory=inventory)
+    fake_uow = FakeUnitOfWork(inventory=inventory)
+    order_app_service = OrderApplicationService(uow=fake_uow)
+    admin_service = KioskAdminService(uow=fake_uow)
 
     return CLI(
         menus=menus,
@@ -87,17 +140,16 @@ def build_cli(monkeypatch, inputs: list[str], balance: int, bean_quantity: int) 
 
 
 class TestSuccessfulCheckout:
-    def test_balance_and_inventory_decrease_correctly(self, monkeypatch):
+    def test_inventory_decrease_correctly(self, monkeypatch):
         cli = build_cli(
             monkeypatch,
             inputs=["1", "HOT", "0", "1", "2", "2", "1", "0"],
-            balance=10000,
+            is_approved=True,
             bean_quantity=1000,
         )
 
         cli.run()
 
-        assert cli.payment.balance == Money(7000)
         assert get_quantity(cli.inventory, Ingredient("원두")) == Quantity(982)
         assert len(cli.cart) == 0
 
@@ -107,31 +159,13 @@ class TestOptionConsumesInventory:
         cli = build_cli(
             monkeypatch,
             inputs=["1", "HOT", "2", "1", "2", "2", "1", "0"],
-            balance=10000,
+            is_approved=True,
             bean_quantity=1000,
         )
 
         cli.run()
 
         assert get_quantity(cli.inventory, Ingredient("원두")) == Quantity(962)
-        assert cli.payment.balance == Money(10000 - 3000 - 500 * 2)
-
-
-class TestInsufficientBalance:
-    def test_cart_is_cleared_and_balance_untouched(self, monkeypatch, capsys):
-        cli = build_cli(
-            monkeypatch,
-            inputs=["1", "HOT", "0", "1", "2", "2", "1", "0"],
-            balance=100,
-            bean_quantity=1000,
-        )
-
-        cli.run()
-
-        captured = capsys.readouterr()
-        assert "잔액이 부족합니다" in captured.out
-        assert cli.payment.balance == Money(100)
-        assert len(cli.cart) == 0
 
 
 class TestOutOfStock:
@@ -139,7 +173,7 @@ class TestOutOfStock:
         cli = build_cli(
             monkeypatch,
             inputs=["1", "HOT", "0", "1", "2", "2", "1", "0"],
-            balance=10000,
+            is_approved=True,
             bean_quantity=5,
         )
 
@@ -156,13 +190,12 @@ class TestInvalidMenuAndOptionInput:
         cli = build_cli(
             monkeypatch,
             inputs=["9", "1", "COLD", "HOT", "0", "1", "2", "2", "1", "0"],
-            balance=10000,
+            is_approved=True,
             bean_quantity=1000,
         )
 
         cli.run()
 
-        assert cli.payment.balance == Money(7000)
         assert len(cli.cart) == 0
 
 
@@ -186,7 +219,7 @@ class TestDevelopmentModeValidation:
         cli = build_cli(
             monkeypatch,
             inputs=["77", "1", "원두", "100", "0", "0"],
-            balance=10000,
+            is_approved=True,
             bean_quantity=1000,
         )
 
@@ -204,7 +237,7 @@ class TestDevelopmentModeValidation:
         cli = build_cli(
             monkeypatch,
             inputs=["77", "1", "우유", "50", "0", "0"],
-            balance=10000,
+            is_approved=True,
             bean_quantity=1000,
         )
 
@@ -221,7 +254,7 @@ class TestDevelopmentModeValidation:
         cli = build_cli(
             monkeypatch,
             inputs=["77", "1", "원두", "50", "1", "원두", "30", "0", "0"],
-            balance=10000,
+            is_approved=True,
             bean_quantity=1000,
         )
 

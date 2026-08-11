@@ -51,10 +51,21 @@ class OptionGroup:
     def validate(self, selected_options: list[Option]) -> None:
         count = self.count_selected(selected_options)
 
+        option_names = "/".join(option.name for option in self.options)
+        
         if count < self.min_quantity.value:
-            raise ValueError(f"{self.name}은(는) 최소 {self.min_quantity.value}개 선택해야 합니다.")
+            if option_names:
+                raise ValueError(
+                    f"{self.name}은(는) 필수 선택 항목입니다. ({option_names})"
+                )
+            raise ValueError(
+                f"{self.name}은(는) 최소 {self.min_quantity.value}개 선택해야 합니다."
+            )
+
         if count > self.max_quantity.value:
-            raise ValueError(f"{self.name}은(는) 최대 {self.max_quantity.value}개까지 선택 가능합니다.")
+            raise ValueError(
+                f"{self.name}은(는) 최대 {self.max_quantity.value}개 선택해야 합니다."
+        )
 
     def find_option_by_name(self, name: str) -> Option | None:
         return next((option for option in self.options if option.name.upper() == name.upper()), None)
