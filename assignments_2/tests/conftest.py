@@ -82,13 +82,11 @@ def make_option_group(make_option):
         option: Option | None = None,
         override_min: int | None = None,
         override_max: int | None = None,
-        override_mode: str | None = None,
     ) -> OptionGroup:
         return OptionGroup(
             option=option or make_option(),
             override_min_quantity=Quantity(override_min) if override_min is not None else None,
             override_max_quantity=Quantity(override_max) if override_max is not None else None,
-            override_selection_mode=override_mode,
         )
 
     return _make
