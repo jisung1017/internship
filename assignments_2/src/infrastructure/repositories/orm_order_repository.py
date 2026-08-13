@@ -49,6 +49,17 @@ class OrmOrderRepository(OrderRepository):
         order.id = order_model.id
         order.order_uuid = order_model.order_uuid
 
+    def find_by_id(self, order_id: int) -> OrderRecord | None:
+        order_model = (
+            self._session.query(OrderModel)
+            .filter(OrderModel.id == order_id)
+            .options(joinedload(OrderModel.items).joinedload(OrderItemModel.options))
+            .first()
+        )
+        if not order_model:
+            return None
+        return self._to_record(order_model)
+
     def find_by_uuid(self, order_uuid: uuid.UUID) -> OrderRecord | None:
         order_model = (
             self._session.query(OrderModel)
@@ -87,6 +98,16 @@ class OrmOrderRepository(OrderRepository):
         order_model = (
             self._session.query(OrderModel)
             .filter(OrderModel.order_uuid == order_uuid)
+            .first()
+        )
+        if not order_model:
+            raise ValueError("존재하지 않는 주문입니다.")
+        order_model.status = new_status.value
+
+    def update_status_by_id(self, order_id: int, new_status: OrderStatus) -> None:
+        order_model = (
+            self._session.query(OrderModel)
+            .filter(OrderModel.id == order_id)
             .first()
         )
         if not order_model:

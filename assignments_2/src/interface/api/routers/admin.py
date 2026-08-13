@@ -25,14 +25,14 @@ def get_admin_order(
     return [OrderRecordResponse.from_domain(record) for record in records]
 
 
-@router.patch("/orders/{order_uuid}/status", response_model=OrderRecordResponse)
+@router.patch("/orders/{order_id}/status", response_model=OrderRecordResponse)
 def update_order_status(
-    order_uuid: UUID,
+    order_id: int,
     request: UpdateOrderStatusRequest,
     admin_service: KioskAdminService = Depends(get_admin_service),
 ):
     try:
-        updated_record = admin_service.update_order_status(order_uuid=order_uuid, new_status=request.status)
+        updated_record = admin_service.update_order_status(order_id=order_id, new_status=request.status)
         return OrderRecordResponse.from_domain(updated_record)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

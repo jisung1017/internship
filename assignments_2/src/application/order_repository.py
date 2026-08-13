@@ -11,6 +11,9 @@ class OrderRepository(Protocol):
     def save(self, order: Order) -> None:
         ...
 
+    def find_by_id(self, order_id: int) -> OrderRecord | None:
+        ...
+
     def find_by_uuid(self, order_uuid: UUID) -> OrderRecord | None:
         ...
 
