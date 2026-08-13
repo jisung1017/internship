@@ -61,23 +61,30 @@ class KioskAdminService:
             return self.uow.orders.find_by_id(order_id)
 
     def _restore_inventory_for_order(self, record: OrderRecord) -> None:
-        """ 취소된 주문 내역을 바탕으로 원재료 재고 복구"""
-        inventory = self.uow.inventories.load()
+        all_menus = {menu.name: menu for menu in self.uow.menus.find_all()}
+        
+        restore_amounts: dict[Ingredient, int] = {}
 
         for item in record.items:
-            menu = self.uow.menus.find_by_name(item.menu_name)
+            menu = all_menus.get(item.menu_name)
             if not menu:
                 continue
 
             for recipe_item in menu.recipe.items:
-                restore_qty = recipe_item.quantity.multiply(item.quantity)
-                inventory.restock(recipe_item.ingredient, restore_qty, reason="CANCEL")
+                ing = recipe_item.ingredient
+                qty = recipe_item.quantity.value * item.quantity
+                restore_amounts[ing] = restore_amounts.get(ing, 0) + qty
 
             for opt_item in item.selected_options:
                 opt_domain = menu.find_option_by_name(opt_item.option_name)
                 if opt_domain and opt_domain.recipe:
-                    for opt_recipe_item in opt_domain.recipe.items:
-                        restore_qty = opt_recipe_item.quantity.multiply(item.quantity)
-                        inventory.restock(opt_recipe_item.ingredient, restore_qty, reason="CANCEL")
+                    for opt_recipe in opt_domain.recipe.items:
+                        ing = opt_recipe.ingredient
+                        qty = opt_recipe.quantity.value * item.quantity
+                        restore_amounts[ing] = restore_amounts.get(ing, 0) + qty
+
+        inventory = self.uow.inventories.load()
+        for ingredient, total_qty in restore_amounts.items():
+            inventory.restock(ingredient, Quantity(total_qty), reason="CANCEL")
 
         self.uow.inventories.save(inventory)
