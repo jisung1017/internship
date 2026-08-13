@@ -16,8 +16,8 @@ router = APIRouter(prefix="/api/v1", tags=["Kiosk"])
 
 @router.get("/menus", response_model=list[MenuResponse])
 def get_menus(order_service: OrderApplicationService = Depends(get_order_app_service)):
-    menus = order_service.get_all_menus()
-    return [MenuResponse.from_domain(menu) for menu in menus]
+    menus = order_service.get_all_menus_with_availability()
+    return [MenuResponse.from_domain(menu, is_available=is_available) for menu, is_available in menus]
 
 
 @router.post("/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
