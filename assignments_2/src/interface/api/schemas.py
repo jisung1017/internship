@@ -18,6 +18,7 @@ class OptionGroupResponse(BaseModel):
 
 
 class MenuResponse(BaseModel):
+    id: int
     name: str
     price: int
     category: str
@@ -28,6 +29,7 @@ class MenuResponse(BaseModel):
     @classmethod
     def from_domain(cls, menu, is_available:bool) -> "MenuResponse":
         return cls(
+            id=menu.id or 0,
             name=menu.name,
             price=menu.price.amount,
             category=menu.category.value,
