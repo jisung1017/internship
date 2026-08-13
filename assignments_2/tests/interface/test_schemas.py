@@ -23,7 +23,7 @@ def test_menu_response_from_domain():
         recipe=Recipe(items=[]),
         option_groups=[option_group],
     )
-    response = MenuResponse.from_domain(menu)
+    response = MenuResponse.from_domain(menu, is_available=True)
     assert response.name == "아메리카노"
     assert response.price == 3000
     assert len(response.option_groups) == 1
