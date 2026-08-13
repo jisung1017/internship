@@ -206,6 +206,7 @@ CREATE TABLE customer_order (
     order_uuid UUID NOT NULL DEFAULT gen_random_uuid(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     total_price INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'ORDERED',
 
     CONSTRAINT pk_customer_order
         PRIMARY KEY (id),
@@ -214,7 +215,10 @@ CREATE TABLE customer_order (
         UNIQUE (order_uuid),
 
     CONSTRAINT ck_customer_order_total_price
-        CHECK (total_price >= 0)
+        CHECK (total_price >= 0),
+
+    CONSTRAINT ck_customer_order_status
+        CHECK (status IN ('ORDERED', 'COMPLETE', 'CANCEL'))
 );
 
 CREATE TABLE order_item (
