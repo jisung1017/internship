@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import UUID
 from src.domain.money import Money
-
+from src.domain.order_status import OrderStatus
 
 @dataclass(frozen=True)
 class OrderRecordItemOption:
@@ -25,3 +25,4 @@ class OrderRecord:
     created_at: datetime
     total_price: Money
     items: list[OrderRecordItem]
+    status: OrderStatus = OrderStatus.ORDERED
