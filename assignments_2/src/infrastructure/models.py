@@ -148,6 +148,7 @@ class OrderModel(Base):
         Uuid(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False
     )
     total_price = Column(Integer, nullable=False)
+    status = Column(Text, nullable=False, default="ORDERED")
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
