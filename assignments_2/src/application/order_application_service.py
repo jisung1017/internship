@@ -22,6 +22,15 @@ class OrderApplicationService:
         with self.uow:
             return self.uow.menus.find_all()
 
+    def get_all_menus_with_availability(self) -> list[tuple[Menu, bool]]:
+        """
+        메뉴 목록과 각 메뉴의 실시간 주문 가능 여부(재고+수동품절)를 함께 조회하는 유스케이스
+        """
+        with self.uow:
+            menus = self.uow.menus.find_all()
+            inventory = self.uow.inventories.load()
+            return [(menu, menu.is_available(inventory)) for menu in menus]
+
     def place_order(
         self, cart: Cart, payment: Payment, inventory: Inventory | None = None
     ) -> Order:

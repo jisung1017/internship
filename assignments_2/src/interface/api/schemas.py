@@ -20,13 +20,15 @@ class OptionGroupResponse(BaseModel):
 class MenuResponse(BaseModel):
     name: str
     price: int
+    is_available: bool
     option_groups: list[OptionGroupResponse]
 
     @classmethod
-    def from_domain(cls, menu) -> "MenuResponse":
+    def from_domain(cls, menu, is_available:bool) -> "MenuResponse":
         return cls(
             name=menu.name,
             price=menu.price.amount,
+            is_available=is_available,
             option_groups=[
                 OptionGroupResponse(
                     name=group.name,
