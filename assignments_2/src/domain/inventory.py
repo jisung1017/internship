@@ -78,7 +78,7 @@ class Inventory:
 
         return True
 
-    def restock(self, ingredient: Ingredient, quantity: Quantity) -> None:
+    def restock(self, ingredient: Ingredient, quantity: Quantity, reason: str = "RESTOCK") -> None:
         if not isinstance(ingredient, Ingredient):
             raise TypeError("restock ingredient 는 Ingredient 타입이어야 합니다.")
 
@@ -90,7 +90,7 @@ class Inventory:
 
         item = self._find_item(ingredient)  # 없으면 OutOfStockError
         item.increase(quantity)
-        self._record(ingredient, quantity.value, "RESTOCK")
+        self._record(ingredient, quantity.value, reason)
 
     def get_quantity(self, ingredient: Ingredient) -> Quantity:
         try:
