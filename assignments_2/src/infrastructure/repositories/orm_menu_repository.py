@@ -111,4 +111,5 @@ class OrmMenuRepository(MenuRepository):
             price=Money(menu_model.price),
             recipe=Recipe(items=recipe_items),
             option_groups=option_groups,
+            is_sold_out=menu_model.is_sold_out,
         )
