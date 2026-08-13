@@ -44,6 +44,9 @@ CREATE TABLE menu (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
     name TEXT NOT NULL,
     price INTEGER NOT NULL,
+    category TEXT NOT NULL DEFAULT 'COFFEE',
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    is_sold_out BOOLEAN NOT NULL DEFAULT FALSE,
 
     CONSTRAINT pk_menu
         PRIMARY KEY (id),
@@ -82,39 +85,31 @@ CREATE TABLE recipe_item (
 );
 
 -- ============================================================
--- Option Group
+-- Option Master (기본 제약조건 보유)
 -- ============================================================
 
-CREATE TABLE option_group (
+CREATE TABLE option_master (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
-    menu_id BIGINT NOT NULL,
-
     name TEXT NOT NULL,
+    default_min_select INTEGER NOT NULL DEFAULT 0,
+    default_max_select INTEGER NOT NULL DEFAULT 1,
+    selection_mode TEXT NOT NULL DEFAULT 'choice',
+    default_option_name TEXT NULL,
 
-    min_select INTEGER NOT NULL,
-    max_select INTEGER NOT NULL,
-
-    selection_mode TEXT NOT NULL,
-
-    CONSTRAINT pk_option_group
+    CONSTRAINT pk_option_master
         PRIMARY KEY (id),
 
-    CONSTRAINT ck_option_group_min
-        CHECK (min_select >= 0),
+    CONSTRAINT ck_option_master_min
+        CHECK (default_min_select >= 0),
 
-    CONSTRAINT ck_option_group_max
-        CHECK (max_select >= 1),
+    CONSTRAINT ck_option_master_max
+        CHECK (default_max_select >= 1),
 
-    CONSTRAINT ck_option_group_range
-        CHECK (min_select <= max_select),
+    CONSTRAINT ck_option_master_range
+        CHECK (default_min_select <= default_max_select),
 
-    CONSTRAINT ck_option_group_selection_mode
-        CHECK (selection_mode IN ('choice', 'count')),
-
-    CONSTRAINT fk_option_group_menu
-        FOREIGN KEY (menu_id)
-        REFERENCES menu(id)
-        ON DELETE CASCADE
+    CONSTRAINT ck_option_master_selection_mode
+        CHECK (selection_mode IN ('choice', 'count'))
 );
 
 -- ============================================================
@@ -123,11 +118,10 @@ CREATE TABLE option_group (
 
 CREATE TABLE option_item (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
-    option_group_id BIGINT NOT NULL,
+    option_id BIGINT NOT NULL,
 
     name TEXT NOT NULL,
-
-    additional_price INTEGER NOT NULL,
+    additional_price INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT pk_option_item
         PRIMARY KEY (id),
@@ -135,9 +129,9 @@ CREATE TABLE option_item (
     CONSTRAINT ck_option_price
         CHECK (additional_price >= 0),
 
-    CONSTRAINT fk_option_item_group
-        FOREIGN KEY (option_group_id)
-        REFERENCES option_group(id)
+    CONSTRAINT fk_option_item_option
+        FOREIGN KEY (option_id)
+        REFERENCES option_master(id)
         ON DELETE CASCADE
 );
 
@@ -146,18 +140,18 @@ CREATE TABLE option_item (
 -- ============================================================
 
 CREATE TABLE option_recipe_item (
-    option_id BIGINT NOT NULL,
+    option_item_id BIGINT NOT NULL,
     ingredient_id BIGINT NOT NULL,
     quantity INTEGER NOT NULL,
 
     CONSTRAINT pk_option_recipe_item
-        PRIMARY KEY (option_id, ingredient_id),
+        PRIMARY KEY (option_item_id, ingredient_id),
 
     CONSTRAINT ck_option_recipe_quantity
         CHECK (quantity > 0),
 
-    CONSTRAINT fk_option_recipe_option
-        FOREIGN KEY (option_id)
+    CONSTRAINT fk_option_recipe_option_item
+        FOREIGN KEY (option_item_id)
         REFERENCES option_item(id)
         ON DELETE CASCADE,
 
@@ -165,6 +159,42 @@ CREATE TABLE option_recipe_item (
         FOREIGN KEY (ingredient_id)
         REFERENCES ingredient(id)
         ON DELETE RESTRICT
+);
+
+-- ============================================================
+-- Option Group (N:M 매핑 + NULL 허용 Override)
+-- ============================================================
+
+CREATE TABLE option_group (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+    menu_id BIGINT NOT NULL,
+    option_id BIGINT NOT NULL,
+
+    override_min_select INTEGER NULL,
+    override_max_select INTEGER NULL,
+    override_default_option_name TEXT NULL,
+
+    -- 1. 기본키 (PK)
+    CONSTRAINT pk_option_group
+        PRIMARY KEY (id),
+    
+    -- 2. 메뉴 + 옵션 중복 조합 방지 (복합 유니크)
+    CONSTRAINT uq_option_group_menu_option 
+        UNIQUE (menu_id, option_id),
+    
+    -- 3. 외래키 (FK)
+    CONSTRAINT fk_option_group_menu 
+        FOREIGN KEY (menu_id) REFERENCES menu(id) ON DELETE CASCADE,
+        
+    CONSTRAINT fk_option_group_option 
+        FOREIGN KEY (option_id) REFERENCES option_master(id) ON DELETE RESTRICT,
+    
+    -- 4. 체크 제약조건 (CHECK)
+    CONSTRAINT ck_option_group_override_min
+        CHECK (override_min_select IS NULL OR override_min_select >= 0),
+
+    CONSTRAINT ck_option_group_override_max
+        CHECK (override_max_select IS NULL OR override_max_select >= 1)
 );
 
 -- ============================================================
@@ -176,6 +206,7 @@ CREATE TABLE customer_order (
     order_uuid UUID NOT NULL DEFAULT gen_random_uuid(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     total_price INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'ORDERED',
 
     CONSTRAINT pk_customer_order
         PRIMARY KEY (id),
@@ -184,7 +215,10 @@ CREATE TABLE customer_order (
         UNIQUE (order_uuid),
 
     CONSTRAINT ck_customer_order_total_price
-        CHECK (total_price >= 0)
+        CHECK (total_price >= 0),
+
+    CONSTRAINT ck_customer_order_status
+        CHECK (status IN ('ORDERED', 'COMPLETE', 'CANCEL'))
 );
 
 CREATE TABLE order_item (
@@ -215,7 +249,7 @@ CREATE TABLE order_item_option (
     order_item_id BIGINT NOT NULL,
 
     option_name TEXT NOT NULL,
-    additional_price INTEGER NOT NULL,
+    additional_price INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT pk_order_item_option
         PRIMARY KEY (id),

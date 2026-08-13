@@ -1,11 +1,15 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy.orm import Session
-
+from sqlalchemy.orm import Session, joinedload
 from src.application.order_repository import OrderRepository
 from src.domain.money import Money
 from src.domain.order import Order
-from src.domain.order_record import OrderRecord, OrderRecordItem
+from src.domain.order_status import OrderStatus
+from src.domain.order_record import (
+    OrderRecord,
+    OrderRecordItem,
+    OrderRecordItemOption,
+)
 from src.infrastructure.models import (
     OrderItemModel,
     OrderItemOptionModel,
@@ -24,6 +28,7 @@ class OrmOrderRepository(OrderRepository):
         order_model = OrderModel(
             order_uuid=generated_uuid,
             total_price=order.total_price().amount,
+            status=OrderStatus.ORDERED.value,
             created_at=datetime.now(timezone.utc),
         )
         for item in order.items:
@@ -39,34 +44,75 @@ class OrmOrderRepository(OrderRepository):
                 )
                 order_item_model.options.append(option_model)
             order_model.items.append(order_item_model)
-
         self._session.add(order_model)
         self._session.flush()
         order.id = order_model.id
         order.order_uuid = order_model.order_uuid
 
-    def find_by_uuid(self, order_uuid: uuid.UUID) -> OrderRecord | None:
+    def find_by_id(self, order_id: int) -> OrderRecord | None:
         order_model = (
             self._session.query(OrderModel)
-            .filter(OrderModel.order_uuid == order_uuid)
+            .filter(OrderModel.id == order_id)
+            .options(joinedload(OrderModel.items).joinedload(OrderItemModel.options))
             .first()
         )
         if not order_model:
             return None
         return self._to_record(order_model)
 
-    def find_today(self) -> list[OrderRecord]:
+    def find_by_uuid(self, order_uuid: uuid.UUID) -> OrderRecord | None:
+        order_model = (
+            self._session.query(OrderModel)
+            .filter(OrderModel.order_uuid == order_uuid)
+            .options(
+                joinedload(OrderModel.items).joinedload(OrderItemModel.options)
+            )
+            .first()
+        )
+        if not order_model:
+            return None
+        return self._to_record(order_model)
+
+    def find_today(self, status: OrderStatus | None = None) -> list[OrderRecord]:
         """오늘 00:00:00 UTC 이후 생성된 주문 목록 조회"""
         today_start = datetime.now(timezone.utc).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
+
+        query = self._session.query(OrderModel).filter(OrderModel.created_at >= today_start)
+        if status is not None:
+            status_val = status.value if isinstance(status, OrderStatus) else status
+            query = query.filter(OrderModel.status == status_val)
+
         order_models = (
-            self._session.query(OrderModel)
-            .filter(OrderModel.created_at >= today_start)
+            query.options(
+                joinedload(OrderModel.items).joinedload(OrderItemModel.options)
+            )
             .order_by(OrderModel.id)
             .all()
         )
         return [self._to_record(model) for model in order_models]
+
+    def update_status(self, order_uuid: uuid.UUID, new_status: OrderStatus) -> None:
+        """주문 상태 업데이트"""
+        order_model = (
+            self._session.query(OrderModel)
+            .filter(OrderModel.order_uuid == order_uuid)
+            .first()
+        )
+        if not order_model:
+            raise ValueError("존재하지 않는 주문입니다.")
+        order_model.status = new_status.value
+
+    def update_status_by_id(self, order_id: int, new_status: OrderStatus) -> None:
+        order_model = (
+            self._session.query(OrderModel)
+            .filter(OrderModel.id == order_id)
+            .first()
+        )
+        if not order_model:
+            raise ValueError("존재하지 않는 주문입니다.")
+        order_model.status = new_status.value
 
     def _to_record(self, order_model: OrderModel) -> OrderRecord:
         items = []
@@ -77,16 +123,28 @@ class OrmOrderRepository(OrderRepository):
             line_total = (
                 item_model.menu_price + options_total
             ) * item_model.quantity
+
+            selected_options = [
+                OrderRecordItemOption(
+                    option_name=opt.option_name,
+                    additional_price=Money(opt.additional_price),
+                )
+                for opt in item_model.options
+            ]
+
             items.append(
                 OrderRecordItem(
                     menu_name=item_model.menu_name,
                     quantity=item_model.quantity,
                     line_total=Money(line_total),
+                    selected_options=selected_options,
                 )
             )
         return OrderRecord(
             id=order_model.id,
+            order_uuid=order_model.order_uuid,
             created_at=order_model.created_at,
             total_price=Money(order_model.total_price),
+            status=OrderStatus(order_model.status),
             items=items,
         )

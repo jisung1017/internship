@@ -18,6 +18,7 @@ class OrmInventoryRepository(InventoryRepository):
         models = (
             self._session.query(InventoryItemModel)
             .options(joinedload(InventoryItemModel.ingredient))
+            .order_by(InventoryItemModel.ingredient_id)
             .all()
         )
 

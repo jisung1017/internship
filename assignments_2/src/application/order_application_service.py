@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from uuid import UUID
-
 from src.application.cart_service import CartService
 from src.application.unit_of_work import AbstractUnitOfWork
 from src.domain.cart import Cart
@@ -23,6 +22,15 @@ class OrderApplicationService:
         with self.uow:
             return self.uow.menus.find_all()
 
+    def get_all_menus_with_availability(self) -> list[tuple[Menu, bool]]:
+        """
+        메뉴 목록과 각 메뉴의 실시간 주문 가능 여부(재고+수동품절)를 함께 조회하는 유스케이스
+        """
+        with self.uow:
+            menus = self.uow.menus.find_all()
+            inventory = self.uow.inventories.load()
+            return [(menu, menu.is_available(inventory)) for menu in menus]
+
     def place_order(
         self, cart: Cart, payment: Payment, inventory: Inventory | None = None
     ) -> Order:
@@ -31,7 +39,6 @@ class OrderApplicationService:
             order = Order.from_cart(cart)
             requirements = order.get_recipe_requirements()
 
-            # 1. 주문 항목에서 요구하는 재료 이름들을 중복 없이 추출
             ingredient_names = list(
                 {
                     recipe_item.ingredient.name
@@ -40,24 +47,19 @@ class OrderApplicationService:
                 }
             )
 
-            # 2. load_for_update()를 통해 해당 재료 행(Row)들에 비관적 락(SELECT ... FOR UPDATE) 적용
             current_inventory = (
                 inventory
                 if inventory is not None
                 else self.uow.inventories.load_for_update(ingredient_names)
             )
-
             try:
                 if not current_inventory.can_consume_all(requirements):
                     raise OutOfStockError()
-
                 payment.pay(order)
                 current_inventory.consume_all(requirements)
-
                 self.uow.orders.save(order)
                 self.uow.inventories.save(current_inventory)
                 self.uow.commit()
-
                 return order
             finally:
                 cart.clear()
@@ -67,21 +69,27 @@ class OrderApplicationService:
         items_dto: list,
         is_payment_approved: bool = True,
     ) -> Order:
-        """DTO 기반 주문 생성 유스케이스 (API 전용)"""
-        with self.uow:
-            available_menus = self.uow.menus.find_all()
-            cart = Cart()
-            for item in items_dto:
+        available_menus = self.get_all_menus()
+        cart = Cart()
+        for item in items_dto:
+            if hasattr(item, "selected_option_ids") and item.selected_option_ids:
+                self.cart_service.add_item_by_ids(
+                    cart=cart,
+                    available_menus=available_menus,
+                    menu_name=item.menu_name,
+                    quantity_val=item.quantity,
+                    selected_option_ids=item.selected_option_ids,
+                )
+            else:
                 self.cart_service.add_item_by_names(
                     cart=cart,
                     available_menus=available_menus,
                     menu_name=item.menu_name,
                     quantity_val=item.quantity,
-                    selected_option_names=item.selected_options,
+                    selected_option_names=getattr(item, "selected_options", []),
                 )
-
-            payment = Payment(is_approved=is_payment_approved)
-            return self.place_order(cart=cart, payment=payment)
+        payment = Payment(is_approved=is_payment_approved)
+        return self.place_order(cart=cart, payment=payment)
 
     def get_order_by_uuid(self, order_uuid: UUID) -> OrderRecord | None:
         with self.uow:

@@ -10,7 +10,7 @@ from src.domain.cart_item import CartItem
 from src.domain.exceptions import OutOfStockError, PaymentFailedError
 from src.domain.inventory import Inventory
 from src.domain.menu import Menu
-from src.domain.option import Option
+from src.domain.option_item import OptionItem
 from src.domain.option_group import OptionGroup
 from src.domain.payment import Payment
 from src.domain.quantity import Quantity
@@ -259,7 +259,7 @@ class CLI:
         options_suffix = f" ({options_text})" if options_text else ""
         return f"- {item.menu.name}{options_suffix}x{item.quantity.value} : {item.total_price().amount}원"
 
-    def _format_options(self, options: list[Option]) -> str:
+    def _format_options(self, options: list[OptionItem]) -> str:
         counts: dict[str, int] = {}
         order: list[str] = []
         for option in options:
