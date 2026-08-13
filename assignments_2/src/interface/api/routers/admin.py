@@ -1,17 +1,41 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-
+from uuid import UUID
 from src.application.kiosk_admin_service import KioskAdminService
 from src.domain.exceptions import OutOfStockError
 from src.domain.quantity import Quantity
+from src.domain.order_status import OrderStatus
 from src.interface.api.dependencies import get_admin_service
 from src.interface.api.schemas import (
     InventoryItemResponse,
     OrderRecordResponse,
     RestockRequest,
     TodaySalesResponse,
+    UpdateOrderStatusRequest
 )
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
+
+
+@router.get("/orders", response_model=list[OrderRecordResponse])
+def get_admin_order(
+    status: OrderStatus | None = None,
+    admin_service: KioskAdminService = Depends(get_admin_service),
+):
+    records = admin_service.get_today_orders(status=status)
+    return [OrderRecordResponse.from_domain(record) for record in records]
+
+
+@router.patch("/orders/{order_uuid}/status", response_model=OrderRecordResponse)
+def update_order_status(
+    order_uuid: UUID,
+    request: UpdateOrderStatusRequest,
+    admin_service: KioskAdminService = Depends(get_admin_service),
+):
+    try:
+        updated_record = admin_service.update_order_status(order_uuid=order_uuid, new_status=request.status)
+        return OrderRecordResponse.from_domain(updated_record)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get("/inventory", response_model=list[InventoryItemResponse])
