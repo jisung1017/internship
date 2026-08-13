@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, Text, Uuid, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Text, Uuid, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -20,6 +20,7 @@ class MenuModel(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(Text, nullable=False, unique=True)
     price = Column(Integer, nullable=False)
+    is_sold_out = Column(Boolean, nullable=False, default=False)
 
     recipes = relationship(
         "RecipeItemModel", back_populates="menu", cascade="all, delete-orphan"

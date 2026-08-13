@@ -44,6 +44,7 @@ CREATE TABLE menu (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
     name TEXT NOT NULL,
     price INTEGER NOT NULL,
+    is_sold_out BOOLEAN NOT NULL DEFAULT FALSE,
 
     CONSTRAINT pk_menu
         PRIMARY KEY (id),
