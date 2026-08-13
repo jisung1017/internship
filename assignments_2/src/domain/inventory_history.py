@@ -3,7 +3,7 @@ from datetime import datetime
 
 from src.domain.ingredient import Ingredient
 
-REASONS = {"RESTOCK", "CONSUME"}
+REASONS = {"RESTOCK", "CONSUME", "CANCEL"}
 
 
 @dataclass(frozen=True)
