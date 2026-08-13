@@ -39,10 +39,10 @@ class KioskAdminService:
                     total = total.add(record.total_price)
             return total
 
-    def update_order_status(self, order_uuid: UUID, new_status: OrderStatus) -> OrderRecord:
+    def update_order_status(self, order_id: int, new_status: OrderStatus) -> OrderRecord:
         """주문 상태 변경 및 취소 시 재고 자동 복구 유스케이스"""
         with self.uow:
-            order_record = self.uow.orders.find_by_uuid(order_uuid)
+            order_record = self.uow.orders.find_by_id(order_id)
             if not order_record:
                 raise ValueError("주문 내역을 찾을 수 없습니다.")
 
@@ -55,10 +55,10 @@ class KioskAdminService:
             if new_status == OrderStatus.CANCEL:
                 self._restore_inventory_for_order(order_record)
 
-            self.uow.orders.update_status(order_uuid, new_status)
+            self.uow.orders.update_status_by_id(order_id, new_status)
             self.uow.commit()
 
-            return self.uow.orders.find_by_uuid(order_uuid)
+            return self.uow.orders.find_by_id(order_id)
 
     def _restore_inventory_for_order(self, record: OrderRecord) -> None:
         """ 취소된 주문 내역을 바탕으로 원재료 재고 복구"""
