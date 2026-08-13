@@ -1,6 +1,6 @@
 from uuid import UUID
 from pydantic import BaseModel, Field
-
+from src.domain.order_status import OrderStatus
 
 # --- Menu Schemas ---
 class OptionItemResponse(BaseModel):
@@ -119,6 +119,7 @@ class OrderDetailResponse(BaseModel):
     order_uuid: UUID
     created_at: str
     total_price: int
+    status: str
     items: list[OrderRecordItemResponse]
 
     @classmethod
@@ -127,6 +128,7 @@ class OrderDetailResponse(BaseModel):
             order_uuid=record.order_uuid,
             created_at=record.created_at.isoformat(),
             total_price=record.total_price.amount,
+            status=record.status.value,
             items=[
                 OrderRecordItemResponse(
                     menu_name=item.menu_name,
@@ -161,18 +163,26 @@ class RestockRequest(BaseModel):
     )
 
 
+class UpdateOrderStatusRequest(BaseModel):
+    status: OrderStatus = Field(..., description="변경할 주문 상태 (COMPLETE, CANCEL)")
+
+
 class OrderRecordResponse(BaseModel):
     id: int
+    order_uuid: UUID
     created_at: str
     total_price: int
+    status: str
     items: list[OrderRecordItemResponse]
 
     @classmethod
     def from_domain(cls, record) -> "OrderRecordResponse":
         return cls(
             id=record.id,
+            order_uuid=record.order_uuid,
             created_at=record.created_at.isoformat(),
             total_price=record.total_price.amount,
+            status=record.status.value,
             items=[
                 OrderRecordItemResponse(
                     menu_name=item.menu_name,
