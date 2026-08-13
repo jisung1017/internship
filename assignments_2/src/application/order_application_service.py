@@ -69,30 +69,27 @@ class OrderApplicationService:
         items_dto: list,
         is_payment_approved: bool = True,
     ) -> Order:
-        """DTO 요청 기반 주문 처리 (ID 및 이름 기반 파싱 모두 지원)"""
-        with self.uow:
-            available_menus = self.uow.menus.find_all()
-            cart = Cart()
-            for item in items_dto:
-                # selected_option_ids 우선 처리
-                if hasattr(item, "selected_option_ids") and item.selected_option_ids:
-                    self.cart_service.add_item_by_ids(
-                        cart=cart,
-                        available_menus=available_menus,
-                        menu_name=item.menu_name,
-                        quantity_val=item.quantity,
-                        selected_option_ids=item.selected_option_ids,
-                    )
-                else:
-                    self.cart_service.add_item_by_names(
-                        cart=cart,
-                        available_menus=available_menus,
-                        menu_name=item.menu_name,
-                        quantity_val=item.quantity,
-                        selected_option_names=getattr(item, "selected_options", []),
-                    )
-            payment = Payment(is_approved=is_payment_approved)
-            return self.place_order(cart=cart, payment=payment)
+        available_menus = self.get_all_menus()
+        cart = Cart()
+        for item in items_dto:
+            if hasattr(item, "selected_option_ids") and item.selected_option_ids:
+                self.cart_service.add_item_by_ids(
+                    cart=cart,
+                    available_menus=available_menus,
+                    menu_name=item.menu_name,
+                    quantity_val=item.quantity,
+                    selected_option_ids=item.selected_option_ids,
+                )
+            else:
+                self.cart_service.add_item_by_names(
+                    cart=cart,
+                    available_menus=available_menus,
+                    menu_name=item.menu_name,
+                    quantity_val=item.quantity,
+                    selected_option_names=getattr(item, "selected_options", []),
+                )
+        payment = Payment(is_approved=is_payment_approved)
+        return self.place_order(cart=cart, payment=payment)
 
     def get_order_by_uuid(self, order_uuid: UUID) -> OrderRecord | None:
         with self.uow:
