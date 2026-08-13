@@ -17,6 +17,7 @@ class Menu:
     tags: list[MenuTag] = field(default_factory=list)
     option_groups: list[OptionGroup] = field(default_factory=list)
     is_sold_out: bool = False  # 관리자의 수동 품절 여부 (DB 저장 필드)
+    id: int | None = None
 
     def __post_init__(self):
         if not isinstance(self.name, str):
