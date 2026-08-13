@@ -5,13 +5,16 @@ from src.domain.option_item import OptionItem
 from src.domain.recipe import Recipe
 from src.domain.inventory import Inventory
 from src.domain.quantity import Quantity
-
+from src.domain.category import Category
+from src.domain.menu_tag import MenuTag
 
 @dataclass
 class Menu:
     name: str
     price: Money
     recipe: Recipe
+    category: Category = Category.COFFEE
+    tags: list[MenuTag] = field(default_factory=list)
     option_groups: list[OptionGroup] = field(default_factory=list)
     is_sold_out: bool = False  # 관리자의 수동 품절 여부 (DB 저장 필드)
 
