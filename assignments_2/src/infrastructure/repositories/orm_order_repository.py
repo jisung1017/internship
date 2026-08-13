@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from src.application.order_repository import OrderRepository
 from src.domain.money import Money
 from src.domain.order import Order
+from src.domain.order_status import OrderStatus
 from src.domain.order_record import (
     OrderRecord,
     OrderRecordItem,
@@ -27,6 +28,7 @@ class OrmOrderRepository(OrderRepository):
         order_model = OrderModel(
             order_uuid=generated_uuid,
             total_price=order.total_price().amount,
+            status=OrderStatus.ORDERED.value,
             created_at=datetime.now(timezone.utc),
         )
         for item in order.items:
@@ -60,21 +62,36 @@ class OrmOrderRepository(OrderRepository):
             return None
         return self._to_record(order_model)
 
-    def find_today(self) -> list[OrderRecord]:
+    def find_today(self, status: OrderStatus | None = None) -> list[OrderRecord]:
         """오늘 00:00:00 UTC 이후 생성된 주문 목록 조회"""
         today_start = datetime.now(timezone.utc).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
+
+        query = self._session.query(OrderModel).filter(OrderModel.created_at >= today_start)
+        if status is not None:
+            status_val = status.value if isinstance(status, OrderStatus) else status
+            query = query.filter(OrderModel.status == status_val)
+
         order_models = (
-            self._session.query(OrderModel)
-            .filter(OrderModel.created_at >= today_start)
-            .options(
+            query.options(
                 joinedload(OrderModel.items).joinedload(OrderItemModel.options)
             )
             .order_by(OrderModel.id)
             .all()
         )
         return [self._to_record(model) for model in order_models]
+
+    def update_status(self, order_uuid: uuid.UUID, new_status: OrderStatus) -> None:
+        """주문 상태 업데이트"""
+        order_model = (
+            self._session.query(OrderModel)
+            .filter(OrderModel.order_uuid == order_uuid)
+            .first()
+        )
+        if not order_model:
+            raise ValueError("존재하지 않는 주문입니다.")
+        order_model.status = new_status.value
 
     def _to_record(self, order_model: OrderModel) -> OrderRecord:
         items = []
@@ -107,5 +124,6 @@ class OrmOrderRepository(OrderRepository):
             order_uuid=order_model.order_uuid,
             created_at=order_model.created_at,
             total_price=Money(order_model.total_price),
+            status=OrderStatus(order_model.status),
             items=items,
         )
