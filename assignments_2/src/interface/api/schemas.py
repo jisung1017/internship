@@ -20,6 +20,8 @@ class OptionGroupResponse(BaseModel):
 class MenuResponse(BaseModel):
     name: str
     price: int
+    category: str
+    tags: list[str]
     is_available: bool
     option_groups: list[OptionGroupResponse]
 
@@ -28,6 +30,8 @@ class MenuResponse(BaseModel):
         return cls(
             name=menu.name,
             price=menu.price.amount,
+            category=menu.category.value,
+            tags=[tag.value for tag in menu.tags],
             is_available=is_available,
             option_groups=[
                 OptionGroupResponse(

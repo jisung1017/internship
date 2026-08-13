@@ -9,6 +9,8 @@ from src.domain.option_item import OptionItem
 from src.domain.quantity import Quantity
 from src.domain.recipe import Recipe
 from src.domain.recipe_item import RecipeItem
+from src.domain.category import Category
+from src.domain.menu_tag import MenuTag
 from src.infrastructure.models import (
     MenuModel,
     OptionGroupModel,
@@ -106,10 +108,14 @@ class OrmMenuRepository(MenuRepository):
             for og in menu_model.option_groups
         ]
 
+        domain_tags = [MenuTag(tag_str) for tag_str in (menu_model.tags or [])]
+
         return Menu(
             name=menu_model.name,
             price=Money(menu_model.price),
             recipe=Recipe(items=recipe_items),
+            category=Category(menu_model.category),
+            tags=domain_tags,
             option_groups=option_groups,
             is_sold_out=menu_model.is_sold_out,
         )

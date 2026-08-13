@@ -1,6 +1,8 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Text, Uuid, UniqueConstraint
+from sqlalchemy import (
+    Boolean, Column, DateTime, ForeignKey, Integer, Text, Uuid, UniqueConstraint, ARRAY, JSON
+)
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -20,6 +22,12 @@ class MenuModel(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(Text, nullable=False, unique=True)
     price = Column(Integer, nullable=False)
+    category = Column(Text, nullable=False, default='COFFEE')
+    tags = Column(
+        ARRAY(Text).with_variant(JSON, "sqlite"),
+        nullable=False,
+        default=list,
+    )
     is_sold_out = Column(Boolean, nullable=False, default=False)
 
     recipes = relationship(
