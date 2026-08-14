@@ -5,6 +5,7 @@
   { "name": "얼음", "unit": "g", "quantity": 100000 },
   { "name": "바닐라 시럽", "unit": "ml", "quantity": 5000 },
   { "name": "초코 시럽", "unit": "ml", "quantity": 5000 },
+  { "name": "카라멜 시럽", "unit": "ml", "quantity": 5000 },
   { "name": "말차 파우더", "unit": "g", "quantity": 3000 },
   { "name": "딸기 베이스", "unit": "g", "quantity": 5000 },
   { "name": "레몬 원액", "unit": "ml", "quantity": 5000 },
