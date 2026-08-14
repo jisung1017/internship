@@ -1,8 +1,10 @@
 from typing import Annotated
 from uuid import UUID
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from src.application.order_application_service import OrderApplicationService
 from src.domain.exceptions import OutOfStockError, PaymentFailedError
+from src.domain.category import Category
+from src.domain.menu_tag import MenuTag
 from src.interface.api.dependencies import get_order_app_service
 from src.interface.api.schemas import (
     CreateOrderRequest,
@@ -15,8 +17,13 @@ router = APIRouter(prefix="/api/v1", tags=["Kiosk"])
 
 
 @router.get("/menus", response_model=list[MenuResponse])
-def get_menus(order_service: OrderApplicationService = Depends(get_order_app_service)):
-    menus = order_service.get_all_menus_with_availability()
+def get_menus(
+    category: Category | None = Query(None, description="카테고리 필터"),
+    tag: MenuTag | None = Query(None, description="태그 필터"),
+    order_service: OrderApplicationService = Depends(get_order_app_service),
+):
+    # 파라미터가 None이면 전체 조회, 값이 있으면 서버 필터링
+    menus = order_service.get_menus_with_availability(category=category, tag=tag)
     return [MenuResponse.from_domain(menu, is_available=is_available) for menu, is_available in menus]
 
 

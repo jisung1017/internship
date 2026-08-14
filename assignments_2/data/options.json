@@ -1,0 +1,41 @@
+[
+  {
+    "name": "온도",
+    "default_min_select": 1,
+    "default_max_select": 1,
+    "selection_mode": "choice",
+    "default_option_name": "HOT",
+    "items": [
+      { "name": "HOT", "additional_price": 0 },
+      { "name": "ICE", "additional_price": 0 }
+    ]
+  },
+  {
+    "name": "샷 추가",
+    "default_min_select": 0,
+    "default_max_select": 4,
+    "selection_mode": "count",
+    "default_option_name": null,
+    "items": [
+      {
+        "name": "샷 추가",
+        "additional_price": 500,
+        "recipe": { "원두": 10 }
+      }
+    ]
+  },
+  {
+    "name": "시럽 추가",
+    "default_min_select": 0,
+    "default_max_select": 2,
+    "selection_mode": "count",
+    "default_option_name": null,
+    "items": [
+      {
+        "name": "시럽 추가",
+        "additional_price": 200,
+        "recipe": { "시럽": 10 }
+      }
+    ]
+  }
+]
