@@ -224,6 +224,7 @@ CREATE TABLE customer_order (
 CREATE TABLE order_item (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
     order_id BIGINT NOT NULL,
+    menu_id BIGINT NULL,
 
     menu_name TEXT NOT NULL,
     menu_price INTEGER NOT NULL,
@@ -247,6 +248,7 @@ CREATE TABLE order_item (
 CREATE TABLE order_item_option (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
     order_item_id BIGINT NOT NULL,
+    option_item_id BIGINT NULL,
 
     option_name TEXT NOT NULL,
     additional_price INTEGER NOT NULL DEFAULT 0,
