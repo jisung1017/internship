@@ -11,6 +11,18 @@
     ]
   },
   {
+    "name": "사이즈",
+    "default_min_select": 1,
+    "default_max_select": 1,
+    "selection_mode": "choice",
+    "default_option_name": "MEDIUM",
+    "items": [
+      { "name": "SMALL", "additional_price": 0 },
+      { "name": "MEDIUM", "additional_price": 500 },
+      { "name": "LARGE", "additional_price": 1000 }
+    ]
+  },
+  {
     "name": "샷 추가",
     "default_min_select": 0,
     "default_max_select": 4,
@@ -27,14 +39,24 @@
   {
     "name": "시럽 추가",
     "default_min_select": 0,
-    "default_max_select": 2,
-    "selection_mode": "count",
+    "default_max_select": 3,
+    "selection_mode": "choice",
     "default_option_name": null,
     "items": [
       {
-        "name": "시럽 추가",
-        "additional_price": 200,
-        "recipe": { "시럽": 10 }
+        "name": "바닐라 시럽",
+        "additional_price": 500,
+        "recipe": { "바닐라 시럽": 10 }
+      },
+      {
+        "name": "초코 시럽",
+        "additional_price": 500,
+        "recipe": { "초코 시럽": 10 }
+      },
+      {
+        "name": "카라멜 시럽",
+        "additional_price": 500,
+        "recipe": { "카라멜 시럽": 10 }
       }
     ]
   }
