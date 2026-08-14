@@ -170,6 +170,7 @@ class OrderItemModel(Base):
     order_id = Column(
         Integer, ForeignKey("customer_order.id", ondelete="CASCADE"), nullable=False
     )
+    menu_id = Column(Integer, nullable=True)
     menu_name = Column(Text, nullable=False)
     menu_price = Column(Integer, nullable=False)
     quantity = Column(Integer, nullable=False)
@@ -190,6 +191,7 @@ class OrderItemOptionModel(Base):
     order_item_id = Column(
         Integer, ForeignKey("order_item.id", ondelete="CASCADE"), nullable=False
     )
+    option_item_id = Column(Integer, nullable=True)
     option_name = Column(Text, nullable=False)
     additional_price = Column(Integer, nullable=False, default=0)
 
