@@ -16,6 +16,7 @@ def setup_test_db():
     db_url = DEFAULT_DATABASE_URL
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+psycopg://")
+
     engine = create_engine(db_url, pool_pre_ping=True)
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
@@ -31,63 +32,71 @@ class OrderDTO:
     def __init__(self, menu_name: str, quantity: int):
         self.menu_name = menu_name
         self.quantity = quantity
-        self.selected_options = []
+        self.selected_options = ["HOT", "SMALL"]  # 필수 옵션
 
 
 def test_concurrent_order_stock_limit():
     session_factory = setup_test_db()
 
+    # 1. 원두 재고만 정확히 90g(아메리카노 5잔 분량)으로 설정
     uow_init = SqlAlchemyUnitOfWork(session_factory=session_factory)
     with uow_init:
         inventory = uow_init.inventories.load()
-        ing_bean = Ingredient("원두")
-        current_qty = inventory.get_quantity(ing_bean)
-        inventory.consume_all([(
-            uow_init.menus.find_by_name("아메리카노").recipe,
-            Quantity((current_qty.value - 90) // 18)
-        )])
+        for item in inventory.items:
+            if item.ingredient.name == "원두":
+                item.quantity = Quantity(90)
+                break
         uow_init.inventories.save(inventory)
         uow_init.commit()
 
-    concurrent_request = 10
+    # 2. 10개의 동시 주문 요청 준비
+    concurrent_requests = 10
     success_count = 0
     fail_count = 0
 
     def place_order_worker(worker_id: int):
         thread_uow = SqlAlchemyUnitOfWork(session_factory=session_factory)
         service = OrderApplicationService(uow=thread_uow)
-
         dto = OrderDTO(menu_name="아메리카노", quantity=1)
-        try:
-            service.place_order_from_dto(items_dto=[dto])
-            return True, None
-        except OutOfStockError as e:
-            return False, e
-        except Exception as e:
-            return False, e
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=concurrent_request) as executor:
+        try:
+            # 💡 성공 시 생성된 주문 정보 반환
+            order = service.place_order_from_dto(items_dto=[dto])
+            return True, f"Worker {worker_id:2d} -> 🟢 주문 성공 (Order ID: {order.id})"
+        except OutOfStockError:
+            return False, f"Worker {worker_id:2d} -> 🔴 품절 실패"
+        except Exception as e:
+            return False, f"Worker {worker_id:2d} -> 💥 예외 발생: {e}"
+
+    print("\n\n================ [ 동시성 처리 상세 로그 ] ================")
+
+    # 3. ThreadPoolExecutor로 10개 쓰레드 동시에 실행 및 결과 즉시 출력
+    with concurrent.futures.ThreadPoolExecutor(max_workers=concurrent_requests) as executor:
         futures = [
             executor.submit(place_order_worker, i)
-            for i in range(concurrent_request)
+            for i in range(concurrent_requests)
         ]
 
         for future in concurrent.futures.as_completed(futures):
-            is_success, exc = future.result()
+            is_success, log_message = future.result()
+            print(log_message)  # 👈 터미널에 메시지 출력!
+            
             if is_success:
                 success_count += 1
             else:
                 fail_count += 1
 
+    # 4. 검증 및 결과 집계
     uow_final = SqlAlchemyUnitOfWork(session_factory=session_factory)
     with uow_final:
         final_inventory = uow_final.inventories.load()
         final_bean_qty = final_inventory.get_quantity(Ingredient("원두")).value
 
-    print(f"\n[동시성 테스트 결과]")
+    print("==========================================================")
+    print(f"\n[최종 요약]")
     print(f"- 성공한 주문: {success_count}건")
     print(f"- 실패한(품절) 주문: {fail_count}건")
-    print(f"- 최종 원두 재고: {final_bean_qty}g")
+    print(f"- 최종 원두 재고: {final_bean_qty}g\n")
 
     assert success_count == 5, f"성공 건수는 5건이어야 하지만 {success_count}건입니다."
     assert fail_count == 5, f"실패 건수는 5건이어야 하지만 {fail_count}건입니다."
