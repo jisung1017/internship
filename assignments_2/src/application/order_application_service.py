@@ -9,6 +9,8 @@ from src.domain.menu import Menu
 from src.domain.order import Order
 from src.domain.order_record import OrderRecord
 from src.domain.payment import Payment
+from src.domain.category import Category
+from src.domain.menu_tag import MenuTag
 
 
 @dataclass
@@ -22,12 +24,12 @@ class OrderApplicationService:
         with self.uow:
             return self.uow.menus.find_all()
 
-    def get_all_menus_with_availability(self) -> list[tuple[Menu, bool]]:
-        """
-        메뉴 목록과 각 메뉴의 실시간 주문 가능 여부(재고+수동품절)를 함께 조회하는 유스케이스
-        """
+    def get_all_menus_with_availability(
+        self, category: Category | None = None, tag: MenuTag | None = None
+    ) -> list[tuple[Menu, bool]]:
+        """메뉴 목록 조회 및 재고 기반 품절 여부 판단 (서버 필터링 지원)"""
         with self.uow:
-            menus = self.uow.menus.find_all()
+            menus = self.uow.menus.find_all(category=category, tag=tag)
             inventory = self.uow.inventories.load()
             return [(menu, menu.is_available(inventory)) for menu in menus]
 
