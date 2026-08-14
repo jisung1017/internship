@@ -24,7 +24,7 @@ class OrderApplicationService:
         with self.uow:
             return self.uow.menus.find_all()
 
-    def get_all_menus_with_availability(
+    def get_menus_with_availability(
         self, category: Category | None = None, tag: MenuTag | None = None
     ) -> list[tuple[Menu, bool]]:
         """메뉴 목록 조회 및 재고 기반 품절 여부 판단 (서버 필터링 지원)"""
