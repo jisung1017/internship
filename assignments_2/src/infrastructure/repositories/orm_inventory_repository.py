@@ -64,21 +64,11 @@ class OrmInventoryRepository(InventoryRepository):
                 .first()
             )
             if model:
+                # 이미 DB에 존재하는 재료의 수량만 갱신
                 model.quantity = item.quantity.value
             else:
-                ing_model = (
-                    self._session.query(IngredientModel)
-                    .filter(IngredientModel.name == item.ingredient.name)
-                    .first()
+                # DB에 존재하지 않는 재료라면 자동 생성 대신 예외 발생
+                raise ValueError(
+                    f"DB 재고 목록에 존재하지 않는 원재료('{item.ingredient.name}')는 저장할 수 없습니다. "
+                    f"먼저 원재료를 등록해 주세요."
                 )
-                if not ing_model:
-                    ing_model = IngredientModel(
-                        name=item.ingredient.name, unit=item.ingredient.unit
-                    )
-                    self._session.add(ing_model)
-                    self._session.flush()
-                inv_model = InventoryItemModel(
-                    ingredient_id=ing_model.id,
-                    quantity=item.quantity.value,
-                )
-                self._session.add(inv_model)
