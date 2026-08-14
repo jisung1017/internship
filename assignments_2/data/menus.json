@@ -1,0 +1,171 @@
+[
+  {
+    "name": "아메리카노",
+    "price": 3500,
+    "category": "COFFEE",
+    "tags": ["BEST"],
+    "recipe": {
+      "원두": 18,
+      "물": 250,
+      "테이크아웃 컵": 1
+    },
+    "options": [
+      { "option_name": "온도" },
+      { "option_name": "샷 추가" },
+      { "option_name": "시럽 추가" }
+    ]
+  },
+  {
+    "name": "카페라떼",
+    "price": 4500,
+    "category": "COFFEE",
+    "tags": ["RECOMMEND"],
+    "recipe": {
+      "원두": 18,
+      "물": 30,
+      "우유": 200,
+      "테이크아웃 컵": 1
+    },
+    "options": [
+      { "option_name": "온도" },
+      { "option_name": "샷 추가" },
+      { "option_name": "시럽 추가" }
+    ]
+  },
+  {
+    "name": "바닐라 빈 라떼",
+    "price": 5000,
+    "category": "COFFEE",
+    "tags": ["BEST", "RECOMMEND"],
+    "recipe": {
+      "원두": 18,
+      "물": 30,
+      "우유": 180,
+      "바닐라 시럽": 20,
+      "테이크아웃 컵": 1
+    },
+    "options": [
+      { "option_name": "온도" },
+      { "option_name": "샷 추가" }
+    ]
+  },
+  {
+    "name": "콜드브루",
+    "price": 4500,
+    "category": "COFFEE",
+    "tags": [],
+    "recipe": {
+      "원두": 25,
+      "물": 200,
+      "얼음": 100,
+      "테이크아웃 컵": 1
+    },
+    "options": [
+      {
+        "option_name": "온도",
+        "override_default_option_name": "ICE"
+      },
+      { "option_name": "시럽 추가" }
+    ]
+  },
+  {
+    "name": "아인슈페너",
+    "price": 5500,
+    "category": "COFFEE",
+    "tags": ["SIGNATURE", "NEW"],
+    "recipe": {
+      "원두": 18,
+      "물": 150,
+      "우유": 50,
+      "얼음": 80,
+      "테이크아웃 컵": 1
+    },
+    "options": [
+      {
+        "option_name": "온도",
+        "override_default_option_name": "ICE"
+      },
+      { "option_name": "샷 추가" }
+    ]
+  },
+  {
+    "name": "제주 말차 라떼",
+    "price": 5200,
+    "category": "BEVERAGE",
+    "tags": ["BEST", "SIGNATURE"],
+    "recipe": {
+      "말차 파우더": 25,
+      "우유": 200,
+      "테이크아웃 컵": 1
+    },
+    "options": [
+      { "option_name": "온도" },
+      { "option_name": "샷 추가" }
+    ]
+  },
+  {
+    "name": "딸기 라떼",
+    "price": 5800,
+    "category": "BEVERAGE",
+    "tags": ["SEASONAL", "BEST"],
+    "recipe": {
+      "딸기 베이스": 60,
+      "우유": 180,
+      "얼음": 80,
+      "테이크아웃 컵": 1
+    },
+    "options": [
+      {
+        "option_name": "온도",
+        "override_default_option_name": "ICE"
+      }
+    ]
+  },
+  {
+    "name": "레몬 에이드",
+    "price": 5500,
+    "category": "BEVERAGE",
+    "tags": [],
+    "recipe": {
+      "레몬 원액": 40,
+      "탄산수": 180,
+      "얼음": 100,
+      "테이크아웃 컵": 1
+    },
+    "options": [
+      {
+        "option_name": "온도",
+        "override_default_option_name": "ICE"
+      }
+    ]
+  },
+  {
+    "name": "얼그레이 티",
+    "price": 4000,
+    "category": "TEA",
+    "tags": [],
+    "recipe": {
+      "홍차 티백": 1,
+      "물": 300,
+      "테이크아웃 컵": 1
+    },
+    "options": [
+      { "option_name": "온도" }
+    ]
+  },
+  {
+    "name": "카모마일 릴렉서",
+    "price": 4800,
+    "category": "TEA",
+    "tags": ["NEW", "RECOMMEND"],
+    "recipe": {
+      "카모마일 티백": 1,
+      "레몬 원액": 15,
+      "물": 250,
+      "테이크아웃 컵": 1
+    },
+    "options": [
+      { "option_name": "온도" }
+    ]
+  }
+]
