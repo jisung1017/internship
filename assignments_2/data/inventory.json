@@ -1,0 +1,15 @@
+[
+  { "name": "원두", "unit": "g", "quantity": 10000 },
+  { "name": "물", "unit": "ml", "quantity": 500000 },
+  { "name": "우유", "unit": "ml", "quantity": 200000 },
+  { "name": "얼음", "unit": "g", "quantity": 100000 },
+  { "name": "바닐라 시럽", "unit": "ml", "quantity": 5000 },
+  { "name": "초코 시럽", "unit": "ml", "quantity": 5000 },
+  { "name": "말차 파우더", "unit": "g", "quantity": 3000 },
+  { "name": "딸기 베이스", "unit": "g", "quantity": 5000 },
+  { "name": "레몬 원액", "unit": "ml", "quantity": 5000 },
+  { "name": "탄산수", "unit": "ml", "quantity": 50000 },
+  { "name": "홍차 티백", "unit": "개", "quantity": 200 },
+  { "name": "카모마일 티백", "unit": "개", "quantity": 200 },
+  { "name": "테이크아웃 컵", "unit": "개", "quantity": 1000 }
+]
