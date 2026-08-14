@@ -7,6 +7,7 @@ from src.infrastructure.models import Base
 from src.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
 from src.infrastructure.seeder import seed_initial_data_from_json
 from src.application.order_application_service import OrderApplicationService
+from src.application.kiosk_admin_service import KioskAdminService
 from src.domain.quantity import Quantity
 from src.domain.ingredient import Ingredient
 from src.domain.exceptions import OutOfStockError
@@ -101,3 +102,47 @@ def test_concurrent_order_stock_limit():
     assert success_count == 5, f"성공 건수는 5건이어야 하지만 {success_count}건입니다."
     assert fail_count == 5, f"실패 건수는 5건이어야 하지만 {fail_count}건입니다."
     assert final_bean_qty == 0, f"최종 재고는 0g이어야 하지만 {final_bean_qty}g입니다."
+
+
+def test_concurrent_restock_and_order():
+    """주문(차감)과 입고(보충)가 동시에 일어날 때 데이터 유실이 없는지 검증"""
+    session_factory = setup_test_db()
+
+    # 초기 원두 재고 100g 설정
+    uow_init = SqlAlchemyUnitOfWork(session_factory=session_factory)
+    with uow_init:
+        inventory = uow_init.inventories.load()
+        for item in inventory.items:
+            if item.ingredient.name == "원두":
+                item.quantity = Quantity(100)
+                break
+        uow_init.inventories.save(inventory)
+        uow_init.commit()
+
+    # 동시 실행: 주문 5건(원두 -90g) + 입고 5건(원두 +500g) = 예상 최종 재고: 100 - 90 + 500 = 510g
+    def order_worker():
+        uow = SqlAlchemyUnitOfWork(session_factory=session_factory)
+        service = OrderApplicationService(uow=uow)
+        service.place_order_from_dto(items_dto=[OrderDTO("아메리카노", 1)])
+
+    def restock_worker():
+        uow = SqlAlchemyUnitOfWork(session_factory=session_factory)
+        admin_service = KioskAdminService(uow=uow)
+        admin_service.restock("원두", Quantity(100))
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        # 주문 5개, 입고 5개 동시에 던짐
+        futures = [executor.submit(order_worker) for _ in range(5)] + \
+                  [executor.submit(restock_worker) for _ in range(5)]
+        
+        for future in concurrent.futures.as_completed(futures):
+            future.result()
+
+    # 검증: 100g - (18g * 5) + (100g * 5) = 510g 이 나와야 정상!
+    uow_final = SqlAlchemyUnitOfWork(session_factory=session_factory)
+    with uow_final:
+        final_inv = uow_final.inventories.load()
+        final_bean = final_inv.get_quantity(Ingredient("원두")).value
+
+    print(f"\n[주문+입고 동시성 결과] 최종 원두 재고: {final_bean}g (기대값: 510g)")
+    assert final_bean == 510, f"최종 재고는 510g이어야 하지만 {final_bean}g입니다."
