@@ -25,10 +25,20 @@ class OrmMenuRepository(MenuRepository):
     def __init__(self, session: Session):
         self._session = session
 
-    def find_all(self) -> list[Menu]:
+    def find_all(
+        self, category: Category | None = None, tag: MenuTag | None = None
+    ) -> list[Menu]:
+        query = self._session.query(MenuModel)
+
+        # 1. 카테고리 DB 쿼리 필터링
+        if category is not None:
+            category_val = (
+                category.value if isinstance(category, Category) else category
+            )
+            query = query.filter(MenuModel.category == category_val)
+
         models = (
-            self._session.query(MenuModel)
-            .options(
+            query.options(
                 joinedload(MenuModel.recipes).joinedload(RecipeItemModel.ingredient),
                 joinedload(MenuModel.option_groups)
                 .joinedload(OptionGroupModel.option)
@@ -36,10 +46,17 @@ class OrmMenuRepository(MenuRepository):
                 .joinedload(OptionItemModel.recipes)
                 .joinedload(OptionRecipeItemModel.ingredient),
             )
-            .order_by(MenuModel.id) 
+            .order_by(MenuModel.id)
             .all()
         )
-        return [self._to_domain(m) for m in models]
+
+        domain_menus = [self._to_domain(m) for m in models]
+
+        # 2. 태그 메모리 필터링 (PostgreSQL/SQLite 멀티 DB 호환성 보장)
+        if tag is not None:
+            domain_menus = [m for m in domain_menus if tag in m.tags]
+
+        return domain_menus
 
     def find_by_name(self, name: str) -> Menu | None:
         model = (
