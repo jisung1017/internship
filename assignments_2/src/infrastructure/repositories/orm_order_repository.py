@@ -33,12 +33,14 @@ class OrmOrderRepository(OrderRepository):
         )
         for item in order.items:
             order_item_model = OrderItemModel(
+                menu_id=item.menu.id,  
                 menu_name=item.menu.name,
                 menu_price=item.menu.price.amount,
                 quantity=item.quantity.value,
             )
             for option in item.selected_options:
                 option_model = OrderItemOptionModel(
+                    option_item_id=option.id,  
                     option_name=option.name,
                     additional_price=option.additional_price.amount,
                 )
@@ -126,14 +128,15 @@ class OrmOrderRepository(OrderRepository):
 
             selected_options = [
                 OrderRecordItemOption(
+                    option_item_id=opt.option_item_id,  
                     option_name=opt.option_name,
                     additional_price=Money(opt.additional_price),
                 )
                 for opt in item_model.options
             ]
-
             items.append(
                 OrderRecordItem(
+                    menu_id=item_model.menu_id,
                     menu_name=item_model.menu_name,
                     quantity=item_model.quantity,
                     line_total=Money(line_total),

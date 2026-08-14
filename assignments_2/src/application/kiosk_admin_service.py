@@ -61,30 +61,54 @@ class KioskAdminService:
             return self.uow.orders.find_by_id(order_id)
 
     def _restore_inventory_for_order(self, record: OrderRecord) -> None:
-        all_menus = {menu.name: menu for menu in self.uow.menus.find_all()}
-        
-        restore_amounts: dict[Ingredient, int] = {}
+        all_menus_list = self.uow.menus.find_all()
+        menus_by_id = {menu.id: menu for menu in all_menus_list if menu.id is not None}
+        menus_by_name = {menu.name: menu for menu in all_menus_list}
+
+        restore_map: dict[str, tuple[Ingredient, int]] = {}
 
         for item in record.items:
-            menu = all_menus.get(item.menu_name)
+            menu = None
+            if item.menu_id is not None:
+                menu = menus_by_id.get(item.menu_id)
+            if not menu:
+                menu = menus_by_name.get(item.menu_name)
+
             if not menu:
                 continue
 
+            # 1. 메인 메뉴 레시피 복구 수량 계산
             for recipe_item in menu.recipe.items:
                 ing = recipe_item.ingredient
                 qty = recipe_item.quantity.value * item.quantity
-                restore_amounts[ing] = restore_amounts.get(ing, 0) + qty
+                if ing.name in restore_map:
+                    saved_ing, saved_qty = restore_map[ing.name]
+                    restore_map[ing.name] = (saved_ing, saved_qty + qty)
+                else:
+                    restore_map[ing.name] = (ing, qty)
 
+            # 2. 선택된 옵션 레시피 복구 수량 계산
             for opt_item in item.selected_options:
-                opt_domain = menu.find_option_by_name(opt_item.option_name)
+                opt_domain = None
+                if opt_item.option_item_id is not None:
+                    opt_domain = menu.find_option_item_by_id(opt_item.option_item_id)
+                if not opt_domain:
+                    opt_domain = menu.find_option_by_name(opt_item.option_name)
+
                 if opt_domain and opt_domain.recipe:
                     for opt_recipe in opt_domain.recipe.items:
                         ing = opt_recipe.ingredient
                         qty = opt_recipe.quantity.value * item.quantity
-                        restore_amounts[ing] = restore_amounts.get(ing, 0) + qty
+                        if ing.name in restore_map:
+                            saved_ing, saved_qty = restore_map[ing.name]
+                            restore_map[ing.name] = (saved_ing, saved_qty + qty)
+                        else:
+                            restore_map[ing.name] = (ing, qty)
 
+        # 3. 재고 반영
         inventory = self.uow.inventories.load()
-        for ingredient, total_qty in restore_amounts.items():
-            inventory.restock(ingredient, Quantity(total_qty), reason="CANCEL")
-
+        for _, (ingredient, total_qty) in restore_map.items():
+            inventory.restock(
+                ingredient, Quantity(total_qty), reason="CANCEL"
+            )
         self.uow.inventories.save(inventory)
