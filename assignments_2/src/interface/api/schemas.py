@@ -4,16 +4,19 @@ from src.domain.order_status import OrderStatus
 
 # --- Menu Schemas ---
 class OptionItemResponse(BaseModel):
-    id: int = Field(..., description="옵션 아이템 PK ID")
-    name: str
-    additional_price: int
+    id: int = Field(..., description="옵션 아이템 PK ID", examples=[1])
+    name: str = Field(..., description="옵션 이름 (예: HOT, Large)", examples=["Large"])
+    additional_price: int = Field(..., description="추가 금액", examples=[500])
 
 
 class OptionGroupResponse(BaseModel):
-    name: str
-    min_quantity: int
-    max_quantity: int
-    selection_mode: str
+    name: str = Field(..., description="옵션 그룹명 (예: 온도, 사이즈, 샷 추가)", examples=["사이즈"])
+    default_option_name: str | None = Field(
+        None, description="기본 선택 옵션 이름 (예: Regular, HOT)", examples=["Regular"]
+    )
+    min_quantity: int = Field(..., description="최소 선택 수량", examples=[1])
+    max_quantity: int = Field(..., description="최대 선택 수량", examples=[1])
+    selection_mode: str = Field(..., description="선택 모드 (choice/count)", examples=["choice"])
     options: list[OptionItemResponse]
 
 
@@ -38,6 +41,7 @@ class MenuResponse(BaseModel):
             option_groups=[
                 OptionGroupResponse(
                     name=group.name,
+                    default_option_name=group.default_option_name,
                     min_quantity=group.min_quantity.value,
                     max_quantity=group.max_quantity.value,
                     selection_mode=group.selection_mode,
@@ -61,13 +65,13 @@ class OrderItemRequest(BaseModel):
     quantity: int = Field(..., gt=0, description="주문 수량", examples=[1])
     selected_option_ids: list[int] = Field(
         default_factory=list,
-        description="선택한 옵션 아이템 PK ID 목록",
-        examples=[[1, 3]],
+        description="선택한 옵션 아이템 PK ID 목록 (온도, 사이즈, 샷추가 등)",
+        examples=[[1, 4, 6]],
     )
     selected_options: list[str] = Field(
         default_factory=list,
-        description="선택한 옵션 이름 목록 (하위 호환용)",
-        examples=[["HOT", "샷 추가"]],
+        description="선택한 옵션 이름 목록",
+        examples=[["ICE", "Large", "샷 추가"]],
     )
 
 
@@ -84,12 +88,14 @@ class CreateOrderRequest(BaseModel):
                         {
                             "menu_name": "아메리카노",
                             "quantity": 1,
-                            "selected_option_ids": [1, 3],
+                            "selected_option_ids": [1, 4, 6],
+                            "selected_options": ["HOT", "MEDIUM", "샷 추가"],
                         },
                         {
                             "menu_name": "카페라떼",
                             "quantity": 2,
-                            "selected_option_ids": [2],
+                            "selected_option_ids": [2, 4],
+                            "selected_options": ["ICE", "MEDIUM"],
                         },
                     ]
                 }
