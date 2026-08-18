@@ -7,6 +7,7 @@ from src.application.order_application_service import OrderApplicationService
 from src.domain.payment import Payment
 from src.infrastructure.db import DEFAULT_DATABASE_URL
 from src.infrastructure.models import Base
+from src.infrastructure.seeder import seed_initial_data_from_json  
 from src.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
 from src.interface.cli import CLI
 
@@ -24,6 +25,11 @@ def main() -> None:
     Base.metadata.create_all(bind=engine)
 
     session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    # CLI 실행 시점에 명시적으로 초기 데이터 시딩 수행
+    with session_factory() as session:
+        seed_initial_data_from_json(session)
+
     uow = SqlAlchemyUnitOfWork(session_factory=session_factory)
     order_app_service = OrderApplicationService(uow=uow)
     admin_service = KioskAdminService(uow=uow)
