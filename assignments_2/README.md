@@ -55,7 +55,9 @@ docker compose down -v  # 끌 때
 
 ### 3-2. Alembic 마이그레이션 진행
 ```bash
-uv run alembic upgrade head
+uv run alembic stamp head     # Alembic 초기화
+uv run alembic upgrade head   # Alembic 마이그레이션 (업그레이드)
+uv run alembic check          # 정상 동기화 확인
 ```
 
 ### 4. FastAPI Web API 서버 구동
