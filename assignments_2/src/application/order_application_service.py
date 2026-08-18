@@ -25,11 +25,18 @@ class OrderApplicationService:
             return self.uow.menus.find_all()
 
     def get_menus_with_availability(
-        self, category: Category | None = None, tag: MenuTag | None = None
+        self, 
+        category: Category | None = None, 
+        tag: MenuTag | None = None,
+        page: int = 1,
+        size: int = 20,
     ) -> list[tuple[Menu, bool]]:
-        """메뉴 목록 조회 및 재고 기반 품절 여부 판단 (서버 필터링 지원)"""
+        """메뉴 목록 조회 및 재고 기반 품절 여부 판단 (서버 필터링 및 페이지네이션 지원)"""
+        offset = (page - 1) * size
+        limit = size
+
         with self.uow:
-            menus = self.uow.menus.find_all(category=category, tag=tag)
+            menus = self.uow.menus.find_all(category=category, tag=tag, limit=limit, offset=offset)
             inventory = self.uow.inventories.load()
             return [(menu, menu.is_available(inventory)) for menu in menus]
 
