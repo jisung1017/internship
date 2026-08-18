@@ -25,8 +25,26 @@ class FakeRepository:
     def save(self, item):
         self.items.append(item)
 
-    def find_all(self):
-        return self.items
+    def find_all(
+        self,
+        category=None,
+        tag=None,
+        limit=None,
+        offset=None,
+    ):
+        result = self.items
+        if category is not None:
+            result = [m for m in result if getattr(m, "category", None) == category]
+        if tag is not None:
+            result = [m for m in result if tag in getattr(m, "tags", [])]
+        if offset is not None:
+            result = result[offset:]
+        if limit is not None:
+            result = result[:limit]
+        return result
+
+    def find_by_name(self, name: str):
+        return next((item for item in self.items if item.name == name), None)
 
 
 class FakeInventoryRepository:
@@ -35,6 +53,9 @@ class FakeInventoryRepository:
 
     def load(self) -> Inventory:
         return self._inventory
+
+    def load_for_update(self, ingredient_names=None) -> Inventory:
+        return self.load()
 
     def save(self, inventory: Inventory) -> None:
         self._inventory = inventory
@@ -50,9 +71,21 @@ class FakeOrderRepository:
     def find_by_uuid(self, order_uuid):
         return None
 
-    def find_today(self) -> list:
-        return []
+    def find_today(self, status=None) -> list:
+        result = self.orders
+        if status is not None:
+            result = [o for o in result if getattr(o, "status", None) == status]
+        return result
+    
+    def update_status(self, order_uuid, new_status) -> None:
+        for o in self.orders:
+            if getattr(o, "order_uuid", None) == order_uuid:
+                o.status = new_status
 
+    def update_status_by_id(self, order_id: int, new_status) -> None:
+        for o in self.orders:
+            if getattr(o, "id", None) == order_id:
+                o.status = new_status
 
 class FakeUnitOfWork(AbstractUnitOfWork):
     def __init__(self, inventory=None, menus=None, orders=None):
