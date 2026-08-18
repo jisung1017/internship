@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy.orm import Session, selectinload, selectinload
 from src.application.menu_repository import MenuRepository
 from src.domain.ingredient import Ingredient
 from src.domain.menu import Menu
@@ -75,12 +75,12 @@ class OrmMenuRepository(MenuRepository):
             self._session.query(MenuModel)
             .filter(MenuModel.name == name)
             .options(
-                joinedload(MenuModel.recipes).joinedload(RecipeItemModel.ingredient),
-                joinedload(MenuModel.option_groups)
-                .joinedload(OptionGroupModel.option)
-                .joinedload(OptionModel.items)
-                .joinedload(OptionItemModel.recipes)
-                .joinedload(OptionRecipeItemModel.ingredient),
+                selectinload(MenuModel.recipes).selectinload(RecipeItemModel.ingredient),
+                selectinload(MenuModel.option_groups)
+                .selectinload(OptionGroupModel.option)
+                .selectinload(OptionModel.items)
+                .selectinload(OptionItemModel.recipes)
+                .selectinload(OptionRecipeItemModel.ingredient),
             )
             .first()
         )
