@@ -1,4 +1,6 @@
 import pytest
+from fastapi.testclient import TestClient
+
 from src.domain.cart_item import CartItem
 from src.domain.ingredient import Ingredient
 from src.domain.inventory import Inventory
@@ -13,6 +15,16 @@ from src.domain.quantity import Quantity
 from src.domain.recipe import Recipe
 from src.domain.recipe_item import RecipeItem
 
+from src.application.kiosk_admin_service import KioskAdminService
+from src.application.order_application_service import OrderApplicationService
+from src.interface.api.app import app
+from src.interface.api.dependencies import get_admin_service, get_order_app_service
+from tests.test_acceptance import (
+    FakeRepository,
+    FakeUnitOfWork,
+    build_americano,
+    build_inventory,
+)
 
 @pytest.fixture
 def make_ingredient():
@@ -152,3 +164,32 @@ def make_payment():
         return Payment(is_approved=is_approved)
 
     return _make
+
+@pytest.fixture(autouse=True)
+def override_api_dependencies():
+    """
+    모든 API 테스트 실행 시 실제 DB(PostgreSQL) 대신 FakeUnitOfWork를 자동 주입합니다.
+    """
+    americano = build_americano()
+    americano.id = 1
+
+    menus_repo = FakeRepository()
+    menus_repo.save(americano)
+
+    inventory = build_inventory(1000)
+    fake_uow = FakeUnitOfWork(inventory=inventory, menus=menus_repo)
+
+    order_app_service = OrderApplicationService(uow=fake_uow)
+    admin_service = KioskAdminService(uow=fake_uow)
+
+    app.dependency_overrides[get_order_app_service] = lambda: order_app_service
+    app.dependency_overrides[get_admin_service] = lambda: admin_service
+
+    yield
+
+    app.dependency_overrides.clear()
+
+@pytest.fixture
+def client():
+    """테스트용 FastAPI TestClient fixture"""
+    return TestClient(app)

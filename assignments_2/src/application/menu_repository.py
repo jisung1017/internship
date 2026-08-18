@@ -6,7 +6,11 @@ from src.domain.menu_tag import MenuTag
 
 class MenuRepository(Protocol):
     def find_all(
-        self, category: Category | None = None, tag: MenuTag | None = None
+        self, 
+        category: Category | None = None, 
+        tag: MenuTag | None = None,
+        limit: int | None = None,
+        offset: int | None = None
     ) -> list[Menu]:
         ...
 

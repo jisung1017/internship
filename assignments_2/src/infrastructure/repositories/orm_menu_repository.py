@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, selectinload, selectinload
 from src.application.menu_repository import MenuRepository
 from src.domain.ingredient import Ingredient
 from src.domain.menu import Menu
@@ -26,7 +26,11 @@ class OrmMenuRepository(MenuRepository):
         self._session = session
 
     def find_all(
-        self, category: Category | None = None, tag: MenuTag | None = None
+        self, 
+        category: Category | None = None, 
+        tag: MenuTag | None = None,
+        limit: int | None = None,
+        offset: int | None = None
     ) -> list[Menu]:
         query = self._session.query(MenuModel)
 
@@ -37,22 +41,30 @@ class OrmMenuRepository(MenuRepository):
             )
             query = query.filter(MenuModel.category == category_val)
 
+        # 2. selectinload 변경으로 데이터 중복화 감소 
         models = (
             query.options(
-                joinedload(MenuModel.recipes).joinedload(RecipeItemModel.ingredient),
-                joinedload(MenuModel.option_groups)
-                .joinedload(OptionGroupModel.option)
-                .joinedload(OptionModel.items)
-                .joinedload(OptionItemModel.recipes)
-                .joinedload(OptionRecipeItemModel.ingredient),
+                selectinload(MenuModel.recipes).selectinload(RecipeItemModel.ingredient),
+                selectinload(MenuModel.option_groups)
+                .selectinload(OptionGroupModel.option)
+                .selectinload(OptionModel.items)
+                .selectinload(OptionItemModel.recipes)
+                .selectinload(OptionRecipeItemModel.ingredient),
             )
             .order_by(MenuModel.id)
-            .all()
         )
 
-        domain_menus = [self._to_domain(m) for m in models]
+        # 3. 페이지네이션 적용
+        if limit is not None:
+            models = models.limit(limit)
+        if offset is not None:
+            models = models.offset(offset)
 
-        # 2. 태그 메모리 필터링 (PostgreSQL/SQLite 멀티 DB 호환성 보장)
+        # 4. 실제 SQL이 DB로 전송
+        fetched_models = models.all()
+        domain_menus = [self._to_domain(m) for m in fetched_models]
+
+        # 5. 태그 메모리 필터링
         if tag is not None:
             domain_menus = [m for m in domain_menus if tag in m.tags]
 
@@ -63,12 +75,12 @@ class OrmMenuRepository(MenuRepository):
             self._session.query(MenuModel)
             .filter(MenuModel.name == name)
             .options(
-                joinedload(MenuModel.recipes).joinedload(RecipeItemModel.ingredient),
-                joinedload(MenuModel.option_groups)
-                .joinedload(OptionGroupModel.option)
-                .joinedload(OptionModel.items)
-                .joinedload(OptionItemModel.recipes)
-                .joinedload(OptionRecipeItemModel.ingredient),
+                selectinload(MenuModel.recipes).selectinload(RecipeItemModel.ingredient),
+                selectinload(MenuModel.option_groups)
+                .selectinload(OptionGroupModel.option)
+                .selectinload(OptionModel.items)
+                .selectinload(OptionItemModel.recipes)
+                .selectinload(OptionRecipeItemModel.ingredient),
             )
             .first()
         )
