@@ -8,7 +8,6 @@ from src.application.unit_of_work import AbstractUnitOfWork
 from src.infrastructure.db import DEFAULT_DATABASE_URL
 from src.infrastructure.models import Base
 from src.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
-from src.infrastructure.seeder import seed_initial_data_from_json
 
 _DATABASE_URL = os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
 if _DATABASE_URL.startswith("postgresql://"):
@@ -27,8 +26,6 @@ _session_factory = sessionmaker(
     autocommit=False, autoflush=False, bind=_engine
 )
 
-with _session_factory() as session:
-    seed_initial_data_from_json(session)
 
 def get_uow() -> AbstractUnitOfWork:
     return SqlAlchemyUnitOfWork(session_factory=_session_factory)
