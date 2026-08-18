@@ -36,7 +36,7 @@ TDD 기반 객체지향 프로그래밍 설계와 도메인 모델링과 관리�
 
 ```bash
 git clone <repository>
-cd cafe-mini-kiosk
+cd assignments_2
 ```
 
 ### 2. 가상환경 생성
@@ -45,28 +45,39 @@ cd cafe-mini-kiosk
 uv sync
 ```
 
-### 3. docker 설정
+### 3-1. docker 설정
 
 ```bash
 docker compose up -d    # 백그라운드로 DB 실행
 docker compose ps       # 잘 떴는지 확인
-docker compose down -v  # 끌 때 (데이터는 volume 에 유지됨)
+docker compose down -v  # 끌 때 
 ```
 
-### 4. DB 마이그레이션
+### 3-2. Alembic 마이그레이션 진행
+```bash
+uv run alembic stamp head     # Alembic 초기화
+uv run alembic upgrade head   # Alembic 마이그레이션 (업그레이드)
+uv run alembic check          # 정상 동기화 확인
+```
+
+### 4. FastAPI Web API 서버 구동
 
 ```bash
-psql -U kiosk -d kiosk -f migrations/001_init.sql   # 스키마 생성
-psql -U kiosk -d kiosk -f migrations/002_init.sql   # 초기 시드 데이터
+uv run uvicorn src.interface.api.app:app --host 0.0.0.0 --port 8000 --reload
 ```
+🌐 접속 주소 가이드
 
-접속 정보는 `DATABASE_URL` 환경변수로 오버라이드할 수 있습니다 (안 주면 `postgresql://kiosk:kiosk@localhost:5432/kiosk` 기본값 사용).
+내 컴퓨터 접속 (Swagger API 문서): 
 
-```bash
-export DATABASE_URL="postgresql://<user>:<password>@<host>:5432/<db>"
-```
+http://localhost:8000/docs 또는 http://127.0.0.1:8000/docs
 
-### 5. 실행
+다른 기기/외부 접속: 
+
+http://[서버PC의-IP주소]:8000/docs (예: http://192.168.0.15:8000/docs)
+
+(주의: 브라우저 주소창에 0.0.0.0을 직접 입력하면 ERR_ADDRESS_INVALID 에러가 발생하므로 반드시 localhost 또는 실제 IP를 사용해야 합니다.)
+
+### 5. CLI 콘솔 실행
 
 ```bash
 uv run python -m src.main
