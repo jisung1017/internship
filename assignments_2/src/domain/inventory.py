@@ -86,9 +86,16 @@ class Inventory:
             raise TypeError("restock quantity 는 Quantity 타입이어야 합니다.")
 
         if quantity.value == 0:
-            raise ValueError("입고 수량은 0보다 커야 합니다.")
+            raise ValueError("보충 수량은 0보다 커야 합니다.")
+        
+        # 기존 재고에 없는 원재료인 경우 ValueError 발생 (자동 추가 방지)
+        try:
+            item = self._find_item(ingredient)
+        except OutOfStockError:
+            raise ValueError(
+                f"등록되지 않은 원재료('{ingredient.name}')는 재고를 보충할 수 없습니다."
+            )
 
-        item = self._find_item(ingredient)  # 없으면 OutOfStockError
         item.increase(quantity)
         self._record(ingredient, quantity.value, reason)
 
