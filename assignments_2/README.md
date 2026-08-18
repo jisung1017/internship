@@ -45,12 +45,17 @@ cd assignments_2
 uv sync
 ```
 
-### 3. docker 설정
+### 3-1. docker 설정
 
 ```bash
 docker compose up -d    # 백그라운드로 DB 실행
 docker compose ps       # 잘 떴는지 확인
-docker compose down -v  # 끌 때 (데이터는 volume 에 유지됨)
+docker compose down -v  # 끌 때 
+```
+
+### 3-2. Alembic 마이그레이션 진행
+```bash
+uv run alembic upgrade head
 ```
 
 ### 4. FastAPI Web API 서버 구동
