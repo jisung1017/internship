@@ -1,8 +1,20 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from src.domain.exceptions import OutOfStockError, PaymentFailedError
 from src.interface.api.routers import admin_router, kiosk_router
+from src.interface.api.dependencies import _engine, _session_factory
+from src.infrastructure.models import Base
+from src.infrastructure.seeder import seed_initial_data_from_json
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 서버가 부팅될 때 안전하게 1회 초기화 진행
+    Base.metadata.create_all(bind=_engine)
+    with _session_factory() as session:
+        seed_initial_data_from_json(session)
+    yield
 
 app = FastAPI(
     title="Cafe Mini Kiosk API",
