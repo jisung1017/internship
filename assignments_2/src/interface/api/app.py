@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.domain.exceptions import OutOfStockError, PaymentFailedError
 from src.interface.api.routers import admin_router, kiosk_router
@@ -20,6 +21,16 @@ app = FastAPI(
     title="Cafe Mini Kiosk API",
     description="Clean Architecture 3-Tier Kiosk API Server",
     version="1.0.0",
+    lifespan=lifespan,
+)
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # 라우터 등록

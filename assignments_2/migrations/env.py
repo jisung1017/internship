@@ -62,7 +62,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,  # 컬럼 타입 변경 감지 옵션
-            compare_server_default=True,
+            compare_server_default=False,
         )
 
         with context.begin_transaction():
