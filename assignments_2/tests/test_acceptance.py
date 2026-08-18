@@ -39,6 +39,9 @@ class FakeInventoryRepository:
     def save(self, inventory: Inventory) -> None:
         self._inventory = inventory
 
+    def load_for_update(self, ingredient_names: list[str]) -> Inventory:
+        return self.load()
+
 
 class FakeOrderRepository:
     def __init__(self):
