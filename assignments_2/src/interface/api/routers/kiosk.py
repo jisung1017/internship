@@ -20,10 +20,16 @@ router = APIRouter(prefix="/api/v1", tags=["Kiosk"])
 def get_menus(
     category: Category | None = Query(None, description="카테고리 필터"),
     tag: MenuTag | None = Query(None, description="태그 필터"),
+    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
+    size: int = Query(20, ge=1, le=100, description="한 페이지당 메뉴 개수"),
     order_service: OrderApplicationService = Depends(get_order_app_service),
 ):
     # 파라미터가 None이면 전체 조회, 값이 있으면 서버 필터링
-    menus = order_service.get_menus_with_availability(category=category, tag=tag)
+    menus = order_service.get_menus_with_availability(
+        category=category, 
+        tag=tag,
+        page=page,
+        size=size)
     return [MenuResponse.from_domain(menu, is_available=is_available) for menu, is_available in menus]
 
 
