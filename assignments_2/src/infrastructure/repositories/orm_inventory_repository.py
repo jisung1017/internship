@@ -1,3 +1,4 @@
+from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
 
 from src.application.inventory_repository import InventoryRepository
@@ -35,11 +36,36 @@ class OrmInventoryRepository(InventoryRepository):
         return Inventory(items=items)
 
     def load_for_update(self, ingredient_names: list[str]) -> Inventory:
+        """
+        PostgreSQL Advisory Lock을 이용한 동시성 제어
+        1. 요청된 원재료들의 PK ID를 가져와 오름차순 정렬 (데드락 100% 방지)
+        2. pg_advisory_xact_lock()으로 트랜잭션 단위 락 획득
+        3. 최신 재고 조회 후 반환
+        """
+        if not ingredient_names:
+            return self.load()
+
+        # 1. 락을 잡을 원재료 ID 조회 및 오름차순 정렬 (Lock Ordering)
+        ing_models = (
+            self._session.query(IngredientModel.id)
+            .filter(IngredientModel.name.in_(ingredient_names))
+            .order_by(IngredientModel.id.asc())
+            .all()
+        )
+
+        # 2. PostgreSQL Advisory Lock 획득 (트랜잭션 commit/rollback 시 자동 해제)
+        for (ing_id,) in ing_models:
+            self._session.execute(
+                text("SELECT pg_advisory_xact_lock(:id)"),
+                {"id": ing_id}
+            )
+
+        # 3. 락을 획득한 상태에서 최신 재고 수량 조회
         models = (
             self._session.query(InventoryItemModel)
             .join(InventoryItemModel.ingredient)
             .filter(IngredientModel.name.in_(ingredient_names))
-            .with_for_update()
+            .order_by(InventoryItemModel.ingredient_id.asc())
             .all()
         )
 
@@ -64,21 +90,11 @@ class OrmInventoryRepository(InventoryRepository):
                 .first()
             )
             if model:
+                # 이미 DB에 존재하는 재료의 수량만 갱신
                 model.quantity = item.quantity.value
             else:
-                ing_model = (
-                    self._session.query(IngredientModel)
-                    .filter(IngredientModel.name == item.ingredient.name)
-                    .first()
+                # DB에 존재하지 않는 재료라면 자동 생성 대신 예외 발생
+                raise ValueError(
+                    f"DB 재고 목록에 존재하지 않는 원재료('{item.ingredient.name}')는 저장할 수 없습니다. "
+                    f"먼저 원재료를 등록해 주세요."
                 )
-                if not ing_model:
-                    ing_model = IngredientModel(
-                        name=item.ingredient.name, unit=item.ingredient.unit
-                    )
-                    self._session.add(ing_model)
-                    self._session.flush()
-                inv_model = InventoryItemModel(
-                    ingredient_id=ing_model.id,
-                    quantity=item.quantity.value,
-                )
-                self._session.add(inv_model)

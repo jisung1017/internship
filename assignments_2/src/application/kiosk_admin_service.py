@@ -21,7 +21,7 @@ class KioskAdminService:
 
     def restock(self, ingredient_name: str, quantity: Quantity) -> None:
         with self.uow:
-            inventory = self.uow.inventories.load()
+            inventory = self.uow.inventories.load_for_update([ingredient_name])
             inventory.restock(Ingredient(ingredient_name), quantity)
             self.uow.inventories.save(inventory)
             self.uow.commit()
