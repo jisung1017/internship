@@ -44,6 +44,7 @@ def create_order(
         # 애플리케이션 서비스에 주문 생성 처리 위임
         order = order_service.place_order_from_dto(
             items_dto=request.items,
+            order_uuid=x_kiosk_uuid,
         )
         response.headers["Location"] = f"/api/v1/orders/{order.order_uuid}"
         return OrderResponse(

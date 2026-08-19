@@ -40,10 +40,20 @@ class OrderApplicationService:
             inventory = self.uow.inventories.load()
             return [(menu, menu.is_available(inventory)) for menu in menus]
 
-    def place_order(self, cart: Cart, payment: Payment) -> Order:
+    def place_order(self, cart: Cart, payment: Payment, order_uuid: UUID | None = None) -> Order:
         """장바구니와 결제 객체를 받아 주문을 결제/차감/저장하는 유스케이스"""
         with self.uow:
-            order = Order.from_cart(cart)
+            # 멱등성 검사: 이미 존재하는 order_uuid 라면 return
+            if order_uuid is not None:
+                exisiting_record = self.uow.orders.find_by_uuid(order_uuid)
+                if exisiting_record:
+                    return Order(
+                        items=cart.items,
+                        id=exisiting_record.id,
+                        order_uuid=exisiting_record.order_uuid
+                    )
+                
+            order = Order(items=cart.items, order_uuid=order_uuid)
             requirements = order.get_recipe_requirements()
 
             ingredient_names = list(
@@ -71,6 +81,7 @@ class OrderApplicationService:
         self,
         items_dto: list,
         is_payment_approved: bool = True,
+        order_uuid: UUID | None = None,
     ) -> Order:
         available_menus = self.get_all_menus()
         cart = Cart()
@@ -92,7 +103,7 @@ class OrderApplicationService:
                     selected_option_names=getattr(item, "selected_options", []),
                 )
         payment = Payment(is_approved=is_payment_approved)
-        return self.place_order(cart=cart, payment=payment)
+        return self.place_order(cart=cart, payment=payment, order_uuid=order_uuid)
 
     def get_order_by_uuid(self, order_uuid: UUID) -> OrderRecord | None:
         with self.uow:
