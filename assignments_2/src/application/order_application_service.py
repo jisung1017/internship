@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from sqlite3 import IntegrityError
+from sqlalchemy.exc import IntegrityError
 from uuid import UUID
 from src.application.cart_service import CartService
 from src.application.unit_of_work import AbstractUnitOfWork
