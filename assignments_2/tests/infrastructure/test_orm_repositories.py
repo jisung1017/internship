@@ -7,6 +7,7 @@ from src.domain.quantity import Quantity
 from src.infrastructure.models import (
     Base,
     IngredientModel,
+    InventoryHistoryModel,
     InventoryItemModel,
     MenuModel,
 )
@@ -55,3 +56,33 @@ def test_orm_inventory_repository():
     item = next((i for i in inventory.items if i.ingredient == Ingredient("원두", "g")), None)
     assert item is not None
     assert item.quantity == Quantity(500)
+
+
+def test_inventory_history_accumulation_across_transactions():
+    """여러 트랜잭션에 걸쳐 입고 수행 시 재고 이력이 정상 누적되어야 함"""
+    session = setup_in_memory_db()
+
+    ing_model = IngredientModel(name="원두", unit="g")
+    inv_model = InventoryItemModel(ingredient=ing_model, quantity=1000)
+    session.add_all([ing_model, inv_model])
+    session.commit()
+
+    repo = OrmInventoryRepository(session)
+
+    # Round 1: 100g 입고
+    inv1 = repo.load_for_update(["원두"])
+    inv1.restock(Ingredient("원두", "g"), Quantity(100))
+    repo.save(inv1)
+    session.commit()
+
+    # Round 2: 200g 입고
+    inv2 = repo.load_for_update(["원두"])
+    inv2.restock(Ingredient("원두", "g"), Quantity(200))
+    repo.save(inv2)
+    session.commit()
+
+    # DB 이력 개수가 2개인지 검증 (회귀 2 발생 시 1개로 고정됨)
+    histories = session.query(InventoryHistoryModel).all()
+    assert len(histories) == 2
+    assert histories[0].change == 100
+    assert histories[1].change == 200
