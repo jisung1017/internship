@@ -1,7 +1,11 @@
 import concurrent.futures, os
+import uuid
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from src.domain.cart import Cart
+from src.domain.cart_item import CartItem
+from src.domain.payment import Payment
 from src.infrastructure.db import DEFAULT_DATABASE_URL
 from src.infrastructure.models import Base
 from src.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
@@ -241,3 +245,27 @@ def test_concurrent_cancel_and_order_mixed():
         final_bean = final_inv.get_quantity(Ingredient("원두")).value
 
     assert final_bean == start_bean, f"최종 원두 재고({final_bean}g)가 시작 재고({start_bean}g)와 다릅니다. (덮어쓰기 유실 발생)"
+
+
+def test_concurrent_idempotent_order_requests():
+    """ 동일한 idempotency_key로 동시 요청 시 500 에러 없이 모두 동일 주문 반환"""
+    session_factory = setup_test_db()
+    same_idempotency_key = uuid.uuid4()
+
+    def idempotent_worker():
+        uow = SqlAlchemyUnitOfWork(session_factory=session_factory)
+        service = OrderApplicationService(uow=uow)
+        cart = Cart()
+        menu = service.get_all_menus()[0]
+        cart.add_item(CartItem(menu=menu, quantity=Quantity(1)))
+        payment = Payment(is_approved=True)
+
+        return service.place_order(cart=cart, payment=payment, order_uuid=same_idempotency_key)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = [executor.submit(idempotent_worker) for _ in range(5)]
+        results = [future.result() for future in concurrent.futures.as_completed(futures)]
+
+    # 5개의 요청이 모두 500 예외 없이 동일한 order_uuid를 반환해야 함
+    first_uuid = results[0].order_uuid
+    assert all(r.order_uuid == first_uuid for r in results)
