@@ -292,7 +292,7 @@ class CLI:
 
     def _checkout(self) -> None:
         try:
-            self.order_app_service.place_order(self.cart, self.payment, self.inventory)
+            self.order_app_service.place_order(self.cart, self.payment)
         except OutOfStockError:
             print("재고가 부족합니다.\n")
             self.step = StepType.MENU
