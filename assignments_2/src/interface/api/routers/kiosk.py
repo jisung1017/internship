@@ -38,13 +38,14 @@ def create_order(
     request: CreateOrderRequest,
     response: Response,
     x_kiosk_uuid: Annotated[UUID, Header(description="클라이언트 키오스크 UUID")],
+    idempotency_key: Annotated[UUID | None, Header(alias="Idempotency-Key")] = None,
     order_service: OrderApplicationService = Depends(get_order_app_service),
 ):
     try:
         # 애플리케이션 서비스에 주문 생성 처리 위임
         order = order_service.place_order_from_dto(
             items_dto=request.items,
-            order_uuid=x_kiosk_uuid,
+            idempotency_key=idempotency_key,
         )
         response.headers["Location"] = f"/api/v1/orders/{order.order_uuid}"
         return OrderResponse(
