@@ -90,10 +90,21 @@ class OrmInventoryRepository(InventoryRepository):
             for model in models
         ]
 
-        return Inventory(items=items)
+        inventory = Inventory(items=items)
+        # 범위 검증용: 락을 획득한 원재료 목록을 객체에 기록
+        inventory._locked_ingredient_names = set(unique_names)
+        return inventory
 
     def save(self, inventory: Inventory) -> None:
+        # 범위 검증: load_for_update로 락을 잡은 범위 밖의 재료가 들어오면 예외 발생
+        locked_names = getattr(inventory, "_locked_ingredient_names", None)
+
         for item in inventory.items:
+            if locked_names is not None and item.ingredient.name not in locked_names:
+                raise ValueError(
+                    f"락 범위({locked_names})에 포함되지 않은 원재료('{item.ingredient.name}')는 저장할 수 없습니다."
+                )
+
             model = (
                 self._session.query(InventoryItemModel)
                 .join(InventoryItemModel.ingredient)

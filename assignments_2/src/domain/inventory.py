@@ -12,7 +12,8 @@ from src.domain.quantity import Quantity
 class Inventory:
     items: list[InventoryItem] = field(default_factory=list)
     history: list[InventoryHistory] = field(default_factory=list)
-
+    _locked_ingredient_names: set[str] | None = field(default=None, repr=False, compare=False)
+    
     def __post_init__(self):
         if not isinstance(self.items, list):
             raise TypeError("Inventory items 는 list 형 이여야 한다.")
