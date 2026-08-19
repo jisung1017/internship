@@ -42,7 +42,7 @@ class KioskAdminService:
     def update_order_status(self, order_id: int, new_status: OrderStatus) -> OrderRecord:
         """주문 상태 변경 및 취소 시 재고 자동 복구 유스케이스"""
         with self.uow:
-            order_record = self.uow.orders.find_by_id(order_id)
+            order_record = self.uow.orders.find_by_id_for_update(order_id)
             if not order_record:
                 raise ValueError("주문 내역을 찾을 수 없습니다.")
 
@@ -105,8 +105,12 @@ class KioskAdminService:
                         else:
                             restore_map[ing.name] = (ing, qty)
 
-        # 3. 재고 반영
-        inventory = self.uow.inventories.load()
+        # 3. 재고 반영 (복구 대상 재료에 대해서만 비관적 락 적용 및 최신 수량 로드)
+        if not restore_map:
+            return
+        
+        ingredient_names = list(restore_map.keys())
+        inventory = self.uow.inventories.load_for_update(ingredient_names)
         for _, (ingredient, total_qty) in restore_map.items():
             inventory.restock(
                 ingredient, Quantity(total_qty), reason="CANCEL"
