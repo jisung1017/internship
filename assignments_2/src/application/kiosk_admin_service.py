@@ -105,8 +105,9 @@ class KioskAdminService:
                         else:
                             restore_map[ing.name] = (ing, qty)
 
-        # 3. 재고 반영
-        inventory = self.uow.inventories.load_for_update(list(restore_map.keys()))
+        # 3. 재고 반영 (복구 대상 재료에 대해서만 비관적 락 적용 및 최신 수량 로드)
+        ingredient_names = list(restore_map.keys())
+        inventory = self.uow.inventories.load_for_update(ingredient_names)
         for _, (ingredient, total_qty) in restore_map.items():
             inventory.restock(
                 ingredient, Quantity(total_qty), reason="CANCEL"
