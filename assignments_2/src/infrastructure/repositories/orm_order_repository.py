@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from src.application.order_repository import OrderRepository
 from src.domain.money import Money
 from src.domain.order import Order
@@ -58,6 +58,26 @@ class OrmOrderRepository(OrderRepository):
             .options(joinedload(OrderModel.items).joinedload(OrderItemModel.options))
             .first()
         )
+        if not order_model:
+            return None
+        return self._to_record(order_model)
+
+    def find_by_id_for_update(self, order_id: int) -> OrderRecord | None:
+        """비관적 락(FOR UPDATE)을 걸고 주문 레코드를 조회합니다."""
+        bind_engine = self._session.get_bind()
+        is_sqlite = bind_engine and bind_engine.dialect.name == "sqlite"
+
+        query = (
+            self._session.query(OrderModel)
+            .filter(OrderModel.id == order_id)
+            .options(
+                selectinload(OrderModel.items).selectinload(OrderItemModel.options)
+            )
+        )
+        if not is_sqlite:
+            query = query.with_for_update(of=OrderModel)
+
+        order_model = query.first()
         if not order_model:
             return None
         return self._to_record(order_model)

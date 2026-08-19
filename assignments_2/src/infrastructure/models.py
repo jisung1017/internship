@@ -12,7 +12,7 @@ Base = declarative_base()
 class IngredientModel(Base):
     __tablename__ = "ingredient"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     name = Column(Text, nullable=False, unique=True)
     unit = Column(Text, nullable=False, default="")
 
@@ -20,7 +20,7 @@ class IngredientModel(Base):
 class MenuModel(Base):
     __tablename__ = "menu"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     name = Column(Text, nullable=False, unique=True)
     price = Column(BigInteger, nullable=False)
     category = Column(Text, nullable=False, default='COFFEE')
@@ -60,7 +60,7 @@ class RecipeItemModel(Base):
 class OptionModel(Base):
     __tablename__ = "option_master"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     name = Column(Text, nullable=False)
     default_min_select = Column(BigInteger, nullable=False, default=0)
     default_max_select = Column(BigInteger, nullable=False, default=1)
@@ -78,7 +78,7 @@ class OptionModel(Base):
 class OptionItemModel(Base):
     __tablename__ = "option_item"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     option_id = Column(
         BigInteger, ForeignKey("option_master.id", ondelete="CASCADE"), nullable=False
     )
@@ -111,7 +111,7 @@ class OptionRecipeItemModel(Base):
 class OptionGroupModel(Base):
     __tablename__ = "option_group"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     menu_id = Column(
         BigInteger, ForeignKey("menu.id", ondelete="CASCADE"), nullable=False
     )
@@ -130,6 +130,7 @@ class OptionGroupModel(Base):
         UniqueConstraint("menu_id", "option_id", name="uq_menu_option"),
     )
 
+
 class InventoryItemModel(Base):
     __tablename__ = "inventory"
 
@@ -141,10 +142,28 @@ class InventoryItemModel(Base):
     ingredient = relationship("IngredientModel")
 
 
+class InventoryHistoryModel(Base):
+    __tablename__ = "inventory_history"
+
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
+    ingredient_id = Column(
+        BigInteger, ForeignKey("ingredient.id", ondelete="RESTRICT"), nullable=False
+    )
+    change = Column(BigInteger, nullable=False)
+    reason = Column(Text, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    ingredient = relationship("IngredientModel")
+
+
 class OrderModel(Base):
     __tablename__ = "customer_order"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     order_uuid = Column(
         Uuid(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False
     )
@@ -167,7 +186,7 @@ class OrderModel(Base):
 class OrderItemModel(Base):
     __tablename__ = "order_item"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     order_id = Column(
         BigInteger, ForeignKey("customer_order.id", ondelete="CASCADE"), nullable=False
     )
@@ -188,7 +207,7 @@ class OrderItemModel(Base):
 class OrderItemOptionModel(Base):
     __tablename__ = "order_item_option"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     order_item_id = Column(
         BigInteger, ForeignKey("order_item.id", ondelete="CASCADE"), nullable=False
     )
