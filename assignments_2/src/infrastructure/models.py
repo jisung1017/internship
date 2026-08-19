@@ -130,6 +130,7 @@ class OptionGroupModel(Base):
         UniqueConstraint("menu_id", "option_id", name="uq_menu_option"),
     )
 
+
 class InventoryItemModel(Base):
     __tablename__ = "inventory"
 
@@ -137,6 +138,24 @@ class InventoryItemModel(Base):
         BigInteger, ForeignKey("ingredient.id", ondelete="RESTRICT"), primary_key=True
     )
     quantity = Column(BigInteger, nullable=False)
+
+    ingredient = relationship("IngredientModel")
+
+
+class InventoryHistoryModel(Base):
+    __tablename__ = "inventory_history"
+
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
+    ingredient_id = Column(
+        BigInteger, ForeignKey("ingredient.id", ondelete="RESTRICT"), nullable=False
+    )
+    change = Column(BigInteger, nullable=False)
+    reason = Column(Text, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
 
     ingredient = relationship("IngredientModel")
 
