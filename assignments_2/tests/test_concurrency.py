@@ -11,6 +11,7 @@ from src.application.kiosk_admin_service import KioskAdminService
 from src.domain.quantity import Quantity
 from src.domain.ingredient import Ingredient
 from src.domain.exceptions import OutOfStockError
+from src.domain.order_status import OrderStatus
 
 
 def setup_test_db():
@@ -80,7 +81,7 @@ def test_concurrent_order_stock_limit():
 
         for future in concurrent.futures.as_completed(futures):
             is_success, log_message = future.result()
-            print(log_message)  # 👈 터미널에 메시지 출력!
+            print(log_message)  # 터미널에 메시지 출력!
             
             if is_success:
                 success_count += 1
@@ -146,3 +147,96 @@ def test_concurrent_restock_and_order():
 
     print(f"\n[주문+입고 동시성 결과] 최종 원두 재고: {final_bean}g (기대값: 510g)")
     assert final_bean == 510, f"최종 재고는 510g이어야 하지만 {final_bean}g입니다."
+
+
+# =====================================================================
+#  동시성 리뷰 반영 추가 테스트 케이스
+# =====================================================================
+
+def test_concurrent_duplicate_cancel():
+    """문제 2 검증: 동일 주문을 동시 취소 시 1회만 성공하고 재고도 1회만 복구되어야 함"""
+    session_factory = setup_test_db()
+
+    # 1. 초기 주문 생성 (아메리카노 1잔: 원두 18g 차감)
+    uow_setup = SqlAlchemyUnitOfWork(session_factory=session_factory)
+    with uow_setup:
+        order_service = OrderApplicationService(uow=uow_setup)
+        order = order_service.place_order_from_dto([OrderDTO("아메리카노", 1)])
+        order_id = order.id
+        
+        inv_after_order = uow_setup.inventories.load()
+        initial_bean_qty = inv_after_order.get_quantity(Ingredient("원두")).value
+
+    # 2. 동일 order_id에 대해 5개 스레드가 동시에 취소 요청
+    cancel_requests = 5
+    success_count = 0
+    fail_count = 0
+
+    def cancel_worker():
+        uow = SqlAlchemyUnitOfWork(session_factory=session_factory)
+        admin_service = KioskAdminService(uow=uow)
+        try:
+            admin_service.update_order_status(order_id, OrderStatus.CANCEL)
+            return True
+        except ValueError:
+            return False
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=cancel_requests) as executor:
+        futures = [executor.submit(cancel_worker) for _ in range(cancel_requests)]
+        for future in concurrent.futures.as_completed(futures):
+            if future.result():
+                success_count += 1
+            else:
+                fail_count += 1
+
+    # 3. 검증: 정확히 1번만 취소 성공하고, 원두 재고는 18g만 복구되어야 함
+    uow_final = SqlAlchemyUnitOfWork(session_factory=session_factory)
+    with uow_final:
+        final_inv = uow_final.inventories.load()
+        final_bean_qty = final_inv.get_quantity(Ingredient("원두")).value
+
+    assert success_count == 1, f"취소 성공은 1건이어야 하나 {success_count}건입니다."
+    assert fail_count == cancel_requests - 1
+    assert final_bean_qty == initial_bean_qty + 18, f"원두 재고는 18g만 증가해야 하나 {final_bean_qty - initial_bean_qty}g 증가했습니다."
+
+
+def test_concurrent_cancel_and_order_mixed():
+    """문제 1 검증: 취소(복구)와 주문(차감)이 동시에 실행될 때 차감 유실이 없어야 함"""
+    session_factory = setup_test_db()
+
+    # 1. 미리 취소용 주문 5건 생성 (아메리카노 1잔씩)
+    cancel_order_ids = []
+    uow_setup = SqlAlchemyUnitOfWork(session_factory=session_factory)
+    with uow_setup:
+        order_service = OrderApplicationService(uow=uow_setup)
+        for _ in range(5):
+            o = order_service.place_order_from_dto([OrderDTO("아메리카노", 1)])
+            cancel_order_ids.append(o.id)
+            
+        inv_start = uow_setup.inventories.load()
+        start_bean = inv_start.get_quantity(Ingredient("원두")).value
+
+    # 2. 동시 실행: 기존 주문 5건 취소 (+90g 복구) vs 신규 아메리카노 주문 5건 (-90g 차감)
+    def cancel_worker(target_id: int):
+        uow = SqlAlchemyUnitOfWork(session_factory=session_factory)
+        admin_service = KioskAdminService(uow=uow)
+        admin_service.update_order_status(target_id, OrderStatus.CANCEL)
+
+    def order_worker():
+        uow = SqlAlchemyUnitOfWork(session_factory=session_factory)
+        service = OrderApplicationService(uow=uow)
+        service.place_order_from_dto([OrderDTO("아메리카노", 1)])
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(cancel_worker, oid) for oid in cancel_order_ids] + \
+                  [executor.submit(order_worker) for _ in range(5)]
+        for future in concurrent.futures.as_completed(futures):
+            future.result()
+
+    # 3. 검증: +90g - 90g = 시작 재고와 최종 재고가 동일해야 함
+    uow_final = SqlAlchemyUnitOfWork(session_factory=session_factory)
+    with uow_final:
+        final_inv = uow_final.inventories.load()
+        final_bean = final_inv.get_quantity(Ingredient("원두")).value
+
+    assert final_bean == start_bean, f"최종 원두 재고({final_bean}g)가 시작 재고({start_bean}g)와 다릅니다. (덮어쓰기 유실 발생)"
