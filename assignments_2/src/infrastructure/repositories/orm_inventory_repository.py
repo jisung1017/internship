@@ -5,7 +5,6 @@ from src.application.inventory_repository import InventoryRepository
 from src.domain.ingredient import Ingredient
 from src.domain.inventory import Inventory
 from src.domain.inventory_item import InventoryItem
-from src.domain.inventory_history import InventoryHistory
 from src.domain.quantity import Quantity
 from src.infrastructure.models import IngredientModel, InventoryItemModel, InventoryHistoryModel
 
@@ -15,26 +14,6 @@ class OrmInventoryRepository(InventoryRepository):
 
     def __init__(self, session: Session):
         self._session = session
-
-    def _load_histories(self) -> list[InventoryHistory]:
-        """DB에 저장되어 있는 재고 이력 조회"""
-        hist_models = (
-            self._session.query(InventoryHistoryModel)
-            .join(InventoryHistoryModel.ingredient)
-            .order_by(InventoryHistoryModel.id.asc())
-            .all()
-        )
-        return [
-            InventoryHistory(
-                ingredient=Ingredient(
-                    name=m.ingredient.name, unit=m.ingredient.unit
-                ),
-                change=m.change,
-                reason=m.reason,
-                timestamp=m.created_at,
-            )
-            for m in hist_models
-        ]
 
     def load(self) -> Inventory:
         models = (
@@ -54,11 +33,8 @@ class OrmInventoryRepository(InventoryRepository):
             for model in models
         ]
 
-        histories = self._load_histories()
-        inventory = Inventory(items=items, history=histories)
-        # 로드된 이력 개수만큼 _saved_history_count 초기화
-        inventory._saved_history_count = len(histories)
-
+        inventory = Inventory(items=items)
+        inventory._saved_history_count = 0
         return inventory
 
     def load_for_update(self, ingredient_names: list[str]) -> Inventory:
@@ -116,12 +92,9 @@ class OrmInventoryRepository(InventoryRepository):
             for model in models
         ]
 
-        histories = self._load_histories()
         inventory = Inventory(items=items)
-        # 범위 검증용: 락을 획득한 원재료 목록을 객체에 기록
         inventory._locked_ingredient_names = set(unique_names)
-        # 락 조회시 로드된 재고 이력 개수로 설정
-        inventory._saved_history_count = len(histories)
+        inventory._saved_history_count = 0
         return inventory
 
     def save(self, inventory: Inventory) -> None:
