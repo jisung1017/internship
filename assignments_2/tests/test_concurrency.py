@@ -1,4 +1,4 @@
-import concurrent.futures
+import concurrent.futures, os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -15,7 +15,8 @@ from src.domain.order_status import OrderStatus
 
 
 def setup_test_db():
-    db_url = DEFAULT_DATABASE_URL
+    # 7.5: 하드코딩 제거 및 DATABASE_URL 환경변수 우선 적용
+    db_url = os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+psycopg://")
 
