@@ -53,7 +53,12 @@ def create_order(
             total_price=order.total_price().amount,
             message="주문이 성공적으로 접수되었습니다.",
         )
-    except (OutOfStockError, PaymentFailedError, ValueError) as e:
+    except OutOfStockError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        )
+    except (PaymentFailedError, ValueError) as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
