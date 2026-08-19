@@ -40,9 +40,7 @@ class OrderApplicationService:
             inventory = self.uow.inventories.load()
             return [(menu, menu.is_available(inventory)) for menu in menus]
 
-    def place_order(
-        self, cart: Cart, payment: Payment, inventory: Inventory | None = None
-    ) -> Order:
+    def place_order(self, cart: Cart, payment: Payment) -> Order:
         """장바구니와 결제 객체를 받아 주문을 결제/차감/저장하는 유스케이스"""
         with self.uow:
             order = Order.from_cart(cart)
@@ -56,11 +54,7 @@ class OrderApplicationService:
                 }
             )
 
-            current_inventory = (
-                inventory
-                if inventory is not None
-                else self.uow.inventories.load_for_update(ingredient_names)
-            )
+            current_inventory = self.uow.inventories.load_for_update(ingredient_names)
             try:
                 if not current_inventory.can_consume_all(requirements):
                     raise OutOfStockError()
