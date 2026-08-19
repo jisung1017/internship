@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
+from sqlite3 import IntegrityError
 from uuid import UUID
 from src.application.cart_service import CartService
 from src.application.unit_of_work import AbstractUnitOfWork
 from src.domain.cart import Cart
 from src.domain.exceptions import OutOfStockError
-from src.domain.inventory import Inventory
 from src.domain.menu import Menu
 from src.domain.order import Order
 from src.domain.order_record import OrderRecord
@@ -76,6 +76,18 @@ class OrderApplicationService:
                 self.uow.inventories.save(current_inventory)
                 self.uow.commit()
                 return order
+            except IntegrityError:
+                # 동시 멱등성 요청 경합 무결점 에러 발생 시 기존 주문으로 안전하게 rollback
+                self.uow.rollback()
+                if order_uuid is not None:
+                    existing_record = self.uow.orders.find_by_uuid(order_uuid)
+                    if existing_record:
+                        return Order(
+                            items=cart.items,
+                            id=existing_record.id,
+                            order_uuid=existing_record.order_uuid,
+                        )
+                raise
             finally:
                 cart.clear()
 
