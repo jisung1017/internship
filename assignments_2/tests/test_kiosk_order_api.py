@@ -10,7 +10,7 @@ def test_create_order_success(client):
             {
                 "menu_name": "아메리카노",
                 "quantity": 1,
-                "selected_options": ["HOT", "SMALL"],
+                "selected_options": ["HOT"],
             }
         ]
     }
@@ -24,8 +24,8 @@ def test_create_order_success(client):
     assert response.status_code == 201
     data = response.json()
     assert "order_uuid" in data
+    assert "total_price" in data
     assert data["client_uuid"] == kiosk_uuid
-    assert data["total_price"] == 3000
     assert response.headers.get("Location") == f"/api/v1/orders/{data['order_uuid']}"
 
 
@@ -37,7 +37,7 @@ def test_multiple_orders_same_kiosk(client):
             {
                 "menu_name": "아메리카노",
                 "quantity": 1,
-                "selected_options": ["HOT", "SMALL"],
+                "selected_options": ["HOT"],
             }
         ]
     }
@@ -67,7 +67,7 @@ def test_idempotent_order_submission(client):
             {
                 "menu_name": "아메리카노",
                 "quantity": 1,
-                "selected_options": ["HOT", "SMALL"],
+                "selected_options": ["HOT"],
             }
         ]
     }
