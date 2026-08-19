@@ -62,6 +62,18 @@ class OrmOrderRepository(OrderRepository):
             return None
         return self._to_record(order_model)
 
+    def find_by_id_for_update(self, order_id: int) -> OrderRecord | None:
+        order_model = (
+            self._session.query(OrderModel)
+            .filter(OrderModel.id == order_id)
+            .options(joinedload(OrderModel.items).joinedload(OrderItemModel.options))
+            .with_for_update()
+            .first()
+        )
+        if not order_model:
+            return None
+        return self._to_record(order_model)
+
     def find_by_uuid(self, order_uuid: uuid.UUID) -> OrderRecord | None:
         order_model = (
             self._session.query(OrderModel)
