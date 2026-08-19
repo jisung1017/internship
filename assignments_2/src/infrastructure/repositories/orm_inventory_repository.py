@@ -39,32 +39,43 @@ class OrmInventoryRepository(InventoryRepository):
         """
         PostgreSQL Advisory Lock을 이용한 동시성 제어
         1. 요청된 원재료들의 PK ID를 가져와 오름차순 정렬 (데드락 100% 방지)
-        2. pg_advisory_xact_lock()으로 트랜잭션 단위 락 획득
+        2. pg_advisory_xact_lock(1000, id)으로 트랜잭션 단위 락 획득 (네임스페이스 분리)
         3. 최신 재고 조회 후 반환
         """
         if not ingredient_names:
             return self.load()
 
+        # 중복 재료 이름 제거
+        unique_names = list(set(ingredient_names))
+
         # 1. 락을 잡을 원재료 ID 조회 및 오름차순 정렬 (Lock Ordering)
         ing_models = (
             self._session.query(IngredientModel.id)
-            .filter(IngredientModel.name.in_(ingredient_names))
+            .filter(IngredientModel.name.in_(unique_names))
             .order_by(IngredientModel.id.asc())
             .all()
         )
 
-        # 2. PostgreSQL Advisory Lock 획득 (트랜잭션 commit/rollback 시 자동 해제)
-        for (ing_id,) in ing_models:
-            self._session.execute(
-                text("SELECT pg_advisory_xact_lock(:id)"),
-                {"id": ing_id}
-            )
+        # 7.4: 락 대상 검증 (요청 수와 DB 조회 수가 다르면 예외 발생)
+        if len(ing_models) != len(unique_names):
+            raise ValueError("재고 목록에 존재하지 않는 원재료가 포함되어 있습니다.")
+
+        # 7.3: PostgreSQL Advisory Lock 획득 (2-인자 형태 락 키 네임스페이스 분리)
+        bind_engine = self._session.get_bind()
+        is_sqlite = bind_engine and bind_engine.dialect.name == "sqlite"
+
+        if not is_sqlite:
+            for (ing_id,) in ing_models:
+                self._session.execute(
+                    text("SELECT pg_advisory_xact_lock(1000, :id)"),
+                    {"id": ing_id}
+                )
 
         # 3. 락을 획득한 상태에서 최신 재고 수량 조회
         models = (
             self._session.query(InventoryItemModel)
             .join(InventoryItemModel.ingredient)
-            .filter(IngredientModel.name.in_(ingredient_names))
+            .filter(IngredientModel.name.in_(unique_names))
             .order_by(InventoryItemModel.ingredient_id.asc())
             .all()
         )
