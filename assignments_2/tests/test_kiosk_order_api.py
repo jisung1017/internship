@@ -1,45 +1,84 @@
 import uuid
 import pytest
 
+
 def test_create_order_success(client):
-    """[정상 경로] 주문 생성 성공 시 201 응답 및 정상 데이터 반환 검증"""
+    """[정상 경로] 실제 스키마 기반 주문 생성 성공 및 응답 값 검증"""
     kiosk_uuid = str(uuid.uuid4())
-    payload = {"items": [{"menu_id": 1, "quantity": 1, "options": []}]}
-    
+    payload = {
+        "items": [
+            {
+                "menu_name": "아메리카노",
+                "quantity": 1,
+                "selected_options": ["HOT", "SMALL"],
+            }
+        ]
+    }
+
     response = client.post(
-        "/api/v1/kiosk/orders",
+        "/api/v1/orders",
         json=payload,
-        headers={"x-kiosk-uuid": kiosk_uuid}
+        headers={"x-kiosk-uuid": kiosk_uuid},
     )
-    
+
     assert response.status_code == 201
-    assert "id" in response.json()
+    data = response.json()
+    assert "order_uuid" in data
+    assert data["client_uuid"] == kiosk_uuid
+    assert data["total_price"] == 3000
+    assert response.headers.get("Location") == f"/api/v1/orders/{data['order_uuid']}"
+
 
 def test_multiple_orders_same_kiosk(client):
-    """[회귀 검증] 동일한 키오스크(x-kiosk-uuid)에서 연속 주문 시 정상적으로 2개의 주문이 생성되어야 함"""
+    """[회귀 검증] 동일 x-kiosk-uuid로 연속 주문 시 서로 다른 order_uuid가 발급되어야 함"""
     kiosk_uuid = str(uuid.uuid4())
-    payload = {"items": [{"menu_id": 1, "quantity": 1, "options": []}]}
-    
-    res1 = client.post("/api/v1/kiosk/orders", json=payload, headers={"x-kiosk-uuid": kiosk_uuid})
-    res2 = client.post("/api/v1/kiosk/orders", json=payload, headers={"x-kiosk-uuid": kiosk_uuid})
-    
+    payload = {
+        "items": [
+            {
+                "menu_name": "아메리카노",
+                "quantity": 1,
+                "selected_options": ["HOT", "SMALL"],
+            }
+        ]
+    }
+
+    res1 = client.post(
+        "/api/v1/orders",
+        json=payload,
+        headers={"x-kiosk-uuid": kiosk_uuid},
+    )
+    res2 = client.post(
+        "/api/v1/orders",
+        json=payload,
+        headers={"x-kiosk-uuid": kiosk_uuid},
+    )
+
     assert res1.status_code == 201
     assert res2.status_code == 201
-    assert res1.json()["id"] != res2.json()["id"]  # 서로 다른 주문 ID여야 함
+    assert res1.json()["order_uuid"] != res2.json()["order_uuid"]
+
 
 def test_idempotent_order_submission(client):
-    """[멱등성 검증] 동일한 Idempotency-Key로 재요청 시 기존 주문을 반환해야 함"""
+    """[멱등성 검증] 동일한 Idempotency-Key 재요청 시 동일한 order_uuid를 반환해야 함"""
     kiosk_uuid = str(uuid.uuid4())
     idempotency_key = str(uuid.uuid4())
-    payload = {"items": [{"menu_id": 1, "quantity": 1, "options": []}]}
+    payload = {
+        "items": [
+            {
+                "menu_name": "아메리카노",
+                "quantity": 1,
+                "selected_options": ["HOT", "SMALL"],
+            }
+        ]
+    }
     headers = {
         "x-kiosk-uuid": kiosk_uuid,
-        "Idempotency-Key": idempotency_key
+        "Idempotency-Key": idempotency_key,
     }
-    
-    res1 = client.post("/api/v1/kiosk/orders", json=payload, headers=headers)
-    res2 = client.post("/api/v1/kiosk/orders", json=payload, headers=headers)
-    
+
+    res1 = client.post("/api/v1/orders", json=payload, headers=headers)
+    res2 = client.post("/api/v1/orders", json=payload, headers=headers)
+
     assert res1.status_code == 201
     assert res2.status_code == 201
-    assert res1.json()["id"] == res2.json()["id"]  # 동일한 주문 정보 반환
+    assert res1.json()["order_uuid"] == res2.json()["order_uuid"]
