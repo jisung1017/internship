@@ -1,7 +1,12 @@
 import concurrent.futures, os
+import uuid
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+import pytest
 
+from src.domain.cart import Cart
+from src.domain.cart_item import CartItem
+from src.domain.payment import Payment
 from src.infrastructure.db import DEFAULT_DATABASE_URL
 from src.infrastructure.models import Base
 from src.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
@@ -15,8 +20,13 @@ from src.domain.order_status import OrderStatus
 
 
 def setup_test_db():
-    # 7.5: 하드코딩 제거 및 DATABASE_URL 환경변수 우선 적용
-    db_url = os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
+    # TEST_DATABASE_URL 또는 명시적 DATABASE_URL 확인
+    db_url = os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL")
+
+    # 미설정이거나 기본 개발 DB(kiosk)와 동일하면 개발 데이터 보호를 위해 테스트 skip
+    if not db_url or db_url == DEFAULT_DATABASE_URL:
+        pytest.skip("개발 DB 보호: TEST_DATABASE_URL 환경변수가 설정된 경우에만 동시성 DB 테스트를 수행합니다.")
+
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+psycopg://")
 
@@ -44,7 +54,7 @@ def test_concurrent_order_stock_limit():
     # 1. 원두 재고만 정확히 90g(아메리카노 5잔 분량)으로 설정
     uow_init = SqlAlchemyUnitOfWork(session_factory=session_factory)
     with uow_init:
-        inventory = uow_init.inventories.load()
+        inventory = uow_init.inventories.load_for_update(["원두"])
         for item in inventory.items:
             if item.ingredient.name == "원두":
                 item.quantity = Quantity(90)
@@ -113,7 +123,7 @@ def test_concurrent_restock_and_order():
     # 초기 원두 재고 100g 설정
     uow_init = SqlAlchemyUnitOfWork(session_factory=session_factory)
     with uow_init:
-        inventory = uow_init.inventories.load()
+        inventory = uow_init.inventories.load_for_update(["원두"])
         for item in inventory.items:
             if item.ingredient.name == "원두":
                 item.quantity = Quantity(100)
@@ -241,3 +251,27 @@ def test_concurrent_cancel_and_order_mixed():
         final_bean = final_inv.get_quantity(Ingredient("원두")).value
 
     assert final_bean == start_bean, f"최종 원두 재고({final_bean}g)가 시작 재고({start_bean}g)와 다릅니다. (덮어쓰기 유실 발생)"
+
+
+def test_concurrent_idempotent_order_requests():
+    """ 동일한 idempotency_key로 동시 요청 시 500 에러 없이 모두 동일 주문 반환"""
+    session_factory = setup_test_db()
+    same_idempotency_key = uuid.uuid4()
+
+    def idempotent_worker():
+        uow = SqlAlchemyUnitOfWork(session_factory=session_factory)
+        service = OrderApplicationService(uow=uow)
+        cart = Cart()
+        menu = service.get_all_menus()[0]
+        cart.add_item(CartItem(menu=menu, quantity=Quantity(1)))
+        payment = Payment(is_approved=True)
+
+        return service.place_order(cart=cart, payment=payment, order_uuid=same_idempotency_key)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = [executor.submit(idempotent_worker) for _ in range(5)]
+        results = [future.result() for future in concurrent.futures.as_completed(futures)]
+
+    # 5개의 요청이 모두 500 예외 없이 동일한 order_uuid를 반환해야 함
+    first_uuid = results[0].order_uuid
+    assert all(r.order_uuid == first_uuid for r in results)
