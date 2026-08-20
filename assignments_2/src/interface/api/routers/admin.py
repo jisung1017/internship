@@ -83,7 +83,7 @@ def get_inventory_history(
             ingredient_name=record.ingredient.name,
             change=record.change,
             reason=record.reason,
-            created_at=record.created_at.isoformat(),
+            created_at=record.timestamp.isoformat(),
         )
         for record in records
     ]
