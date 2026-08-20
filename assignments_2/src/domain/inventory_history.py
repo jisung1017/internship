@@ -12,6 +12,7 @@ class InventoryHistory:
     change: int  # 양수=입고, 음수=소비
     reason: str
     timestamp: datetime = field(default_factory=datetime.now)
+    id: int | None = None  
 
     def __post_init__(self) -> None:
         if not isinstance(self.ingredient, Ingredient):

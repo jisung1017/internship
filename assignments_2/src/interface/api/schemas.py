@@ -172,7 +172,7 @@ class RestockRequest(BaseModel):
 
 
 class InventoryHistoryResponse(BaseModel):
-    id: int = Field(..., description="이력 PK ID")
+    id: int | None = Field(..., description="이력 PK ID")
     ingredient_name: str = Field(..., description="재료명")
     change: int = Field(..., description="수량 변동량 (+입고 / -차감)")
     reason: str = Field(..., description="변동 사유 (RESTOCK, CONSUME, CANCEL)")
