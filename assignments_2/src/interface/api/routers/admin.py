@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from uuid import UUID
 from src.application.kiosk_admin_service import KioskAdminService
 from src.domain.exceptions import OutOfStockError
@@ -6,6 +6,7 @@ from src.domain.quantity import Quantity
 from src.domain.order_status import OrderStatus
 from src.interface.api.dependencies import get_admin_service
 from src.interface.api.schemas import (
+    InventoryHistoryResponse,
     InventoryItemResponse,
     OrderRecordResponse,
     RestockRequest,
@@ -62,6 +63,30 @@ def restock_inventory(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     return {"message": f"{request.ingredient_name} {request.quantity}개 입고 완료"}
+
+
+@router.get("/inventory/history", response_model=list[InventoryHistoryResponse])
+def get_inventory_history(
+    ingredient_name: str | None = Query(None, description="특정 재료명 필터"),
+    page: int = Query(1, ge=1, description="페이지 번호"),
+    size: int = Query(50, ge=1, le=100, description="페이지 크기"),
+    admin_service: KioskAdminService = Depends(get_admin_service),
+):
+    records = admin_service.get_inventory_history(
+        ingredient_name=ingredient_name,
+        page=page,
+        size=size,
+    )
+    return [
+        InventoryHistoryResponse(
+            id=record.id,
+            ingredient_name=record.ingredient.name,
+            change=record.change,
+            reason=record.reason,
+            created_at=record.timestamp.isoformat(),
+        )
+        for record in records
+    ]
 
 
 @router.get("/sales/today", response_model=TodaySalesResponse)
