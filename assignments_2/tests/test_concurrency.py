@@ -2,6 +2,7 @@ import concurrent.futures, os
 import uuid
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+import pytest
 
 from src.domain.cart import Cart
 from src.domain.cart_item import CartItem
@@ -19,8 +20,13 @@ from src.domain.order_status import OrderStatus
 
 
 def setup_test_db():
-    # 7.5: 하드코딩 제거 및 DATABASE_URL 환경변수 우선 적용
-    db_url = os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
+    # TEST_DATABASE_URL 또는 명시적 DATABASE_URL 확인
+    db_url = os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL")
+
+    # 미설정이거나 기본 개발 DB(kiosk)와 동일하면 개발 데이터 보호를 위해 테스트 skip
+    if not db_url or db_url == DEFAULT_DATABASE_URL:
+        pytest.skip("개발 DB 보호: TEST_DATABASE_URL 환경변수가 설정된 경우에만 동시성 DB 테스트를 수행합니다.")
+
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+psycopg://")
 
