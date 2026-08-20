@@ -171,6 +171,14 @@ class RestockRequest(BaseModel):
     )
 
 
+class InventoryHistoryResponse(BaseModel):
+    id: int = Field(..., description="이력 PK ID")
+    ingredient_name: str = Field(..., description="재료명")
+    change: int = Field(..., description="수량 변동량 (+입고 / -차감)")
+    reason: str = Field(..., description="변동 사유 (RESTOCK, CONSUME, CANCEL)")
+    created_at: str = Field(..., description="생성 일시 (ISO 8601)")
+
+
 class UpdateOrderStatusRequest(BaseModel):
     status: OrderStatus = Field(..., description="변경할 주문 상태 (COMPLETE, CANCEL)")
 
