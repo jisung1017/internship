@@ -63,7 +63,7 @@ uv run alembic check          # 정상 동기화 확인
 ### 4. FastAPI Web API 서버 구동
 
 ```bash
-uv run uvicorn src.interface.api.app:app --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn src.interface.api.app:app --host 0.0.0.0 --port 8000
 ```
 🌐 접속 주소 가이드
 
