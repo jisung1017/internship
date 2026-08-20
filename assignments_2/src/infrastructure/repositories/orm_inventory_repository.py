@@ -100,6 +100,12 @@ class OrmInventoryRepository(InventoryRepository):
     def save(self, inventory: Inventory) -> None:
         # 범위 검증: load_for_update로 락을 잡은 범위 밖의 재료가 들어오면 예외 발생
         locked_names = getattr(inventory, "_locked_ingredient_names", None)
+        
+        # 락 정보가 아예 없는 Inventory 객체(load()로 조회 등)는 저장 전면 거부
+        if locked_names is None:
+            raise ValueError(
+                "락이 설정되지 않은 Inventory 객체는 저장할 수 없습니다. load_for_update()를 사용하세요."
+            )
 
         for item in inventory.items:
             if locked_names is not None and item.ingredient.name not in locked_names:
