@@ -63,6 +63,26 @@ class FakeInventoryRepository:
     def load_for_update(self, ingredient_names: list[str]) -> Inventory:
         return self.load()
 
+    def find_histories(
+        self,
+        ingredient_name: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list:
+        if not self._inventory:
+            return []
+        histories = self._inventory.history
+        if ingredient_name:
+            histories = [h for h in histories if h.ingredient.name == ingredient_name]
+        
+        histories = list(reversed(histories))
+        
+        if offset is not None:
+            histories = histories[offset:]
+        if limit is not None:
+            histories = histories[:limit]
+        return histories
+
 
 class FakeOrderRepository:
     def __init__(self):
