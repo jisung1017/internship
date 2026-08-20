@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
+from sqlalchemy.exc import IntegrityError
 from uuid import UUID
 from src.application.cart_service import CartService
 from src.application.unit_of_work import AbstractUnitOfWork
 from src.domain.cart import Cart
 from src.domain.exceptions import OutOfStockError
-from src.domain.inventory import Inventory
 from src.domain.menu import Menu
 from src.domain.order import Order
 from src.domain.order_record import OrderRecord
@@ -34,7 +34,6 @@ class OrderApplicationService:
         """메뉴 목록 조회 및 재고 기반 품절 여부 판단 (서버 필터링 및 페이지네이션 지원)"""
         offset = (page - 1) * size
         limit = size
-
         with self.uow:
             menus = self.uow.menus.find_all(category=category, tag=tag, limit=limit, offset=offset)
             inventory = self.uow.inventories.load()
@@ -43,16 +42,19 @@ class OrderApplicationService:
     def place_order(self, cart: Cart, payment: Payment, order_uuid: UUID | None = None) -> Order:
         """장바구니와 결제 객체를 받아 주문을 결제/차감/저장하는 유스케이스"""
         with self.uow:
-            # 멱등성 검사: 이미 존재하는 order_uuid 라면 return
+            # 1. 멱등성 검사: 이미 처리된 order_uuid(idempotency_key) 재요청 시 기존 주문 반환
             if order_uuid is not None:
-                exisiting_record = self.uow.orders.find_by_uuid(order_uuid)
-                if exisiting_record:
-                    return Order(
+                existing_record = self.uow.orders.find_by_uuid(order_uuid)
+                if existing_record:
+                    order = Order(
                         items=cart.items,
-                        id=exisiting_record.id,
-                        order_uuid=exisiting_record.order_uuid
+                        id=existing_record.id,
+                        order_uuid=existing_record.order_uuid,
                     )
-                
+                    cart.clear()
+                    return order
+
+            # 2. 신규 주문 처리
             order = Order(items=cart.items, order_uuid=order_uuid)
             requirements = order.get_recipe_requirements()
 
@@ -74,6 +76,18 @@ class OrderApplicationService:
                 self.uow.inventories.save(current_inventory)
                 self.uow.commit()
                 return order
+            except IntegrityError:
+                # 동시 멱등성 요청 경합 무결점 에러 발생 시 기존 주문으로 안전하게 rollback
+                self.uow.rollback()
+                if order_uuid is not None:
+                    existing_record = self.uow.orders.find_by_uuid(order_uuid)
+                    if existing_record:
+                        return Order(
+                            items=cart.items,
+                            id=existing_record.id,
+                            order_uuid=existing_record.order_uuid,
+                        )
+                raise
             finally:
                 cart.clear()
 
@@ -81,7 +95,7 @@ class OrderApplicationService:
         self,
         items_dto: list,
         is_payment_approved: bool = True,
-        order_uuid: UUID | None = None,
+        idempotency_key: UUID | None = None,
     ) -> Order:
         available_menus = self.get_all_menus()
         cart = Cart()
@@ -103,7 +117,8 @@ class OrderApplicationService:
                     selected_option_names=getattr(item, "selected_options", []),
                 )
         payment = Payment(is_approved=is_payment_approved)
-        return self.place_order(cart=cart, payment=payment, order_uuid=order_uuid)
+        # idempotency_key를 place_order의 order_uuid 인자로 안전하게 전달
+        return self.place_order(cart=cart, payment=payment, order_uuid=idempotency_key)
 
     def get_order_by_uuid(self, order_uuid: UUID) -> OrderRecord | None:
         with self.uow:

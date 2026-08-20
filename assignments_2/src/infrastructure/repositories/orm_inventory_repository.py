@@ -1,11 +1,11 @@
 from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
 
+from src.domain.inventory_history import InventoryHistory
 from src.application.inventory_repository import InventoryRepository
 from src.domain.ingredient import Ingredient
 from src.domain.inventory import Inventory
 from src.domain.inventory_item import InventoryItem
-from src.domain.inventory_history import InventoryHistory
 from src.domain.quantity import Quantity
 from src.infrastructure.models import IngredientModel, InventoryItemModel, InventoryHistoryModel
 
@@ -15,26 +15,6 @@ class OrmInventoryRepository(InventoryRepository):
 
     def __init__(self, session: Session):
         self._session = session
-
-    def _load_histories(self) -> list[InventoryHistory]:
-        """DB에 저장되어 있는 재고 이력 조회"""
-        hist_models = (
-            self._session.query(InventoryHistoryModel)
-            .join(InventoryHistoryModel.ingredient)
-            .order_by(InventoryHistoryModel.id.asc())
-            .all()
-        )
-        return [
-            InventoryHistory(
-                ingredient=Ingredient(
-                    name=m.ingredient.name, unit=m.ingredient.unit
-                ),
-                change=m.change,
-                reason=m.reason,
-                timestamp=m.created_at,
-            )
-            for m in hist_models
-        ]
 
     def load(self) -> Inventory:
         models = (
@@ -54,11 +34,8 @@ class OrmInventoryRepository(InventoryRepository):
             for model in models
         ]
 
-        histories = self._load_histories()
-        inventory = Inventory(items=items, history=histories)
-        # 로드된 이력 개수만큼 _saved_history_count 초기화
-        inventory._saved_history_count = len(histories)
-
+        inventory = Inventory(items=items)
+        inventory._saved_history_count = 0
         return inventory
 
     def load_for_update(self, ingredient_names: list[str]) -> Inventory:
@@ -116,17 +93,20 @@ class OrmInventoryRepository(InventoryRepository):
             for model in models
         ]
 
-        histories = self._load_histories()
         inventory = Inventory(items=items)
-        # 범위 검증용: 락을 획득한 원재료 목록을 객체에 기록
         inventory._locked_ingredient_names = set(unique_names)
-        # 락 조회시 로드된 재고 이력 개수로 설정
-        inventory._saved_history_count = len(histories)
+        inventory._saved_history_count = 0
         return inventory
 
     def save(self, inventory: Inventory) -> None:
         # 범위 검증: load_for_update로 락을 잡은 범위 밖의 재료가 들어오면 예외 발생
         locked_names = getattr(inventory, "_locked_ingredient_names", None)
+        
+        # 락 정보가 아예 없는 Inventory 객체(load()로 조회 등)는 저장 전면 거부
+        if locked_names is None:
+            raise ValueError(
+                "락이 설정되지 않은 Inventory 객체는 저장할 수 없습니다. load_for_update()를 사용하세요."
+            )
 
         for item in inventory.items:
             if locked_names is not None and item.ingredient.name not in locked_names:
@@ -168,3 +148,38 @@ class OrmInventoryRepository(InventoryRepository):
                 self._session.add(hist_model)
 
         inventory._saved_history_count = len(inventory.history)
+
+
+    def find_histories(
+        self,
+        ingredient_name: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[InventoryHistory]:
+        query = (
+            self._session.query(InventoryHistoryModel)
+            .options(joinedload(InventoryHistoryModel.ingredient))
+            .join(InventoryHistoryModel.ingredient)
+            .order_by(InventoryHistoryModel.id.desc())
+        )
+        if ingredient_name:
+            query = query.filter(IngredientModel.name == ingredient_name)
+        if offset is not None:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+
+        models = query.all()
+        # ORM Model -> Domain InventoryHistory 변환하여 반환
+        return [
+            InventoryHistory(
+                id=m.id,
+                ingredient=Ingredient(
+                    name=m.ingredient.name, unit=m.ingredient.unit
+                ),
+                change=m.change,
+                reason=m.reason,
+                timestamp=m.created_at,
+            )
+            for m in models
+        ]
