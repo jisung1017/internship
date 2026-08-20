@@ -3,3 +3,4 @@ scratch.py
 .idea/
 .venv/
 .pytest_cache/
+.env
