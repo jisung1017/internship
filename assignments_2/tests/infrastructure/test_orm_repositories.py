@@ -1,3 +1,4 @@
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -86,3 +87,21 @@ def test_inventory_history_accumulation_across_transactions():
     assert len(histories) == 2
     assert histories[0].change == 100
     assert histories[1].change == 200
+
+def test_save_without_lock_raises_value_error():
+    """load()로 획득한 락 없는 Inventory를 save() 시도 시 ValueError 발생해야 함"""
+    session = setup_in_memory_db()
+
+    ing_model = IngredientModel(name="원두", unit="g")
+    inv_model = InventoryItemModel(ingredient=ing_model, quantity=1000)
+    session.add_all([ing_model, inv_model])
+    session.commit()
+
+    repo = OrmInventoryRepository(session)
+    
+    # 락 없이 load() 실행
+    unlocked_inventory = repo.load()
+
+    # save() 시도 시 거부되는지 검증
+    with pytest.raises(ValueError, match="락이 설정되지 않은"):
+        repo.save(unlocked_inventory)
