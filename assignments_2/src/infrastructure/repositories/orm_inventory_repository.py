@@ -1,6 +1,7 @@
 from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
 
+from src.domain.inventory_history import InventoryHistory
 from src.application.inventory_repository import InventoryRepository
 from src.domain.ingredient import Ingredient
 from src.domain.inventory import Inventory
@@ -154,8 +155,7 @@ class OrmInventoryRepository(InventoryRepository):
         ingredient_name: str | None = None,
         limit: int | None = None,
         offset: int | None = None,
-    ) -> list[InventoryHistoryModel]:
-        """재고 변동 이력 최신순 페이징 조회"""
+    ) -> list[InventoryHistory]:
         query = (
             self._session.query(InventoryHistoryModel)
             .options(joinedload(InventoryHistoryModel.ingredient))
@@ -168,4 +168,18 @@ class OrmInventoryRepository(InventoryRepository):
             query = query.offset(offset)
         if limit is not None:
             query = query.limit(limit)
-        return query.all()
+
+        models = query.all()
+        # ORM Model -> Domain InventoryHistory 변환하여 반환
+        return [
+            InventoryHistory(
+                id=m.id,
+                ingredient=Ingredient(
+                    name=m.ingredient.name, unit=m.ingredient.unit
+                ),
+                change=m.change,
+                reason=m.reason,
+                timestamp=m.created_at,
+            )
+            for m in models
+        ]
