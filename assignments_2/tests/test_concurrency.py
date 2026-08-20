@@ -54,7 +54,7 @@ def test_concurrent_order_stock_limit():
     # 1. 원두 재고만 정확히 90g(아메리카노 5잔 분량)으로 설정
     uow_init = SqlAlchemyUnitOfWork(session_factory=session_factory)
     with uow_init:
-        inventory = uow_init.inventories.load()
+        inventory = uow_init.inventories.load_for_update(["원두"])
         for item in inventory.items:
             if item.ingredient.name == "원두":
                 item.quantity = Quantity(90)
@@ -123,7 +123,7 @@ def test_concurrent_restock_and_order():
     # 초기 원두 재고 100g 설정
     uow_init = SqlAlchemyUnitOfWork(session_factory=session_factory)
     with uow_init:
-        inventory = uow_init.inventories.load()
+        inventory = uow_init.inventories.load_for_update(["원두"])
         for item in inventory.items:
             if item.ingredient.name == "원두":
                 item.quantity = Quantity(100)

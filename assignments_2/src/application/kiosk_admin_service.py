@@ -116,3 +116,19 @@ class KioskAdminService:
                 ingredient, Quantity(total_qty), reason="CANCEL"
             )
         self.uow.inventories.save(inventory)
+
+
+    def get_inventory_history(
+        self,
+        ingredient_name: str | None = None,
+        page: int = 1,
+        size: int = 50,
+    ) -> list:
+        offset = (page - 1) * size
+        limit = size
+        with self.uow:
+            return self.uow.inventories.find_histories(
+                ingredient_name=ingredient_name,
+                limit=limit,
+                offset=offset,
+            )

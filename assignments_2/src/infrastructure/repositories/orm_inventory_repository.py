@@ -1,6 +1,7 @@
 from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
 
+from src.domain.inventory_history import InventoryHistory
 from src.application.inventory_repository import InventoryRepository
 from src.domain.ingredient import Ingredient
 from src.domain.inventory import Inventory
@@ -147,3 +148,38 @@ class OrmInventoryRepository(InventoryRepository):
                 self._session.add(hist_model)
 
         inventory._saved_history_count = len(inventory.history)
+
+
+    def find_histories(
+        self,
+        ingredient_name: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[InventoryHistory]:
+        query = (
+            self._session.query(InventoryHistoryModel)
+            .options(joinedload(InventoryHistoryModel.ingredient))
+            .join(InventoryHistoryModel.ingredient)
+            .order_by(InventoryHistoryModel.id.desc())
+        )
+        if ingredient_name:
+            query = query.filter(IngredientModel.name == ingredient_name)
+        if offset is not None:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+
+        models = query.all()
+        # ORM Model -> Domain InventoryHistory 변환하여 반환
+        return [
+            InventoryHistory(
+                id=m.id,
+                ingredient=Ingredient(
+                    name=m.ingredient.name, unit=m.ingredient.unit
+                ),
+                change=m.change,
+                reason=m.reason,
+                timestamp=m.created_at,
+            )
+            for m in models
+        ]

@@ -52,3 +52,22 @@ def test_get_admin_today_sales(client):
     data = response.json()
     assert "total_sales" in data
     assert "orders" in data
+
+
+def test_get_admin_inventory_history(client):
+    """재고 변동 이력 조회 기능 검증"""
+    # 1. 입고 수행하여 이력 발생
+    client.post(
+        "/api/v1/admin/inventory/restock",
+        json={"ingredient_name": "원두", "quantity": 100},
+    )
+
+    # 2. 이력 목록 조회
+    response = client.get("/api/v1/admin/inventory/history")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) > 0
+    assert data[0]["ingredient_name"] == "원두"
+    assert data[0]["change"] == 100
+    assert data[0]["reason"] == "RESTOCK"
