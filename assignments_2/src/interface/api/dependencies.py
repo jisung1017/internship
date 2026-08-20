@@ -6,7 +6,6 @@ from src.application.kiosk_admin_service import KioskAdminService
 from src.application.order_application_service import OrderApplicationService
 from src.application.unit_of_work import AbstractUnitOfWork
 from src.infrastructure.db import DEFAULT_DATABASE_URL
-from src.infrastructure.models import Base
 from src.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
 
 _DATABASE_URL = os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
@@ -19,8 +18,6 @@ else:
 
 _engine = create_engine(_SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
 
-# API 실행 시에도 DB 테이블 자동 생성
-Base.metadata.create_all(bind=_engine)
 
 _session_factory = sessionmaker(
     autocommit=False, autoflush=False, bind=_engine
