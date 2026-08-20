@@ -86,10 +86,13 @@ uv run python -m src.main
 ### 6. 테스트
 
 ```bash
+docker exec -it kiosk-db psql -U kiosk -c "CREATE DATABASE kiosk_test;"
 uv run pytest
 ```
 
 > DB 관련 테스트(`tests/infrastructure/`)는 실제 PostgreSQL 접속이 필요합니다. 테스트마다 트랜잭션을 열고 끝나면 롤백해서 시드 데이터를 건드리지 않습니다.
+> 동시성 테스트는 test docker 를 활용하여 테스트를 진행합니다.
+
 
 ---
 
