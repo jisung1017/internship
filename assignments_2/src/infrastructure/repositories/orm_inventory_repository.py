@@ -147,3 +147,25 @@ class OrmInventoryRepository(InventoryRepository):
                 self._session.add(hist_model)
 
         inventory._saved_history_count = len(inventory.history)
+
+
+    def find_histories(
+        self,
+        ingredient_name: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[InventoryHistoryModel]:
+        """재고 변동 이력 최신순 페이징 조회"""
+        query = (
+            self._session.query(InventoryHistoryModel)
+            .options(joinedload(InventoryHistoryModel.ingredient))
+            .join(InventoryHistoryModel.ingredient)
+            .order_by(InventoryHistoryModel.id.desc())
+        )
+        if ingredient_name:
+            query = query.filter(IngredientModel.name == ingredient_name)
+        if offset is not None:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+        return query.all()
