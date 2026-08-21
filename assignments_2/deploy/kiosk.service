@@ -1,0 +1,22 @@
+[Unit]
+Description=Cafe Mini Kiosk API
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=exec
+User=kiosk
+WorkingDirectory=/srv/kiosk/current
+EnvironmentFile=/etc/kiosk/kiosk.env
+
+ExecStartPre=/srv/kiosk/current/.venv/bin/alembic upgrade head
+ExecStart=/srv/kiosk/current/.venv/bin/uvicorn src.interface.api.app:app \
+          --host 127.0.0.1 --port 8000
+
+Restart=always
+RestartSec=3
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target
