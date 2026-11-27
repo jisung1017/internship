@@ -2,6 +2,8 @@
 
 # Backend Engineering Internship
 
+**English** · [한국어](README.ko.md)
+
 **From a testable CLI game to a transactional cafe backend.**
 
 Python · Domain Modeling · REST APIs · Data Integrity
