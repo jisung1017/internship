@@ -1,467 +1,203 @@
-# ☕ 사내 카페 미니 키오스크
+# Cafe Kiosk Backend
 
-## 🎯 목표
+![Python](https://img.shields.io/badge/Python-3.14-3776AB?style=flat-square&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?style=flat-square&logo=sqlalchemy&logoColor=white)
+![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
+![Pytest](https://img.shields.io/badge/Pytest-0A9EDC?style=flat-square&logo=pytest&logoColor=white)
 
-TDD 기반 객체지향 프로그래밍 설계와 도메인 모델링과 관리를 중점으로 개발
-이후 인메모리 데이터 기반에서 Docker, PostgreSQL 을 활용하여 DB migration 진행
+[Features](#features) · [Architecture & ERD](docs/ARCHITECTURE.md) · [API](#api-endpoints) · [Run](#getting-started) · [Retrospective](#retrospective)
 
-## 📌 요구사항
+A Python backend for configurable cafe orders, ingredient inventory, and administrative queries. The project evolved from a CLI into a FastAPI service while retaining its domain model and application use cases.
 
-1.  **메뉴 및 재고 관리**
-    - 카페에는 아메리카노, 카페라떼 등 최소 3개 이상의 기본 음료가 존재합니다.
-    - 음료를 제조하기 위한 핵심 재고(원두, 우유, 컵 등)가 존재하며, 프로그램 시작 시 초기 재고량이 세팅되어야 합니다.
-2. **주문 및 옵션 기능**
-    - 사용자는 콘솔에서 번호를 입력하여 음료를 주문할 수 있습니다.
-    - 음료 주문 시 옵션(샷 추가, 사이즈 업 등)을 선택할 수 있으며, 선택한 옵션에 따라 최종 결제 금액이 증가해야 합니다.
-    - 한 번의 주문에 여러 잔의 음료를 담을 수 있습니다(장바구니 기능).
-3. **결제 및 재고 차감 로직**
-    - 최종 주문을 확정하면 총금액이 출력되고 결제가 완료(가정)됩니다.
-    - 결제가 완료됨과 동시에, 주문한 음료 및 옵션에 맞는 재고(원두, 우유, 컵 등)가 정확히 차감되어야 합니다.
-    - **예외 처리:** 현재 남은 재고보다 많은 양을 요구하는 주문이 들어올 경우, 주문을 거절하고 `Out of Stock` 관련 예외(Exception)를 발생시킨 뒤 적절한 에러 메시지를 출력해야 합니다.
-4. **TDD (Test-Driven Development) 엄수**
-    - 모든 비즈니스 로직(주문 계산, 재고 차감 등)은 반드시 실패하는 단위 테스트를 먼저 작성한 후 구현해야 합니다.
-    - 콘솔 입출력(UI) 로직과 비즈니스 로직을 철저히 분리하여, 콘솔 입력 없이도 핵심 로직을 100% 테스트할 수 있어야 합니다.
-5. **데이터베이스(DB) 대신 메모리와 인터페이스 사용**
-    - 현재는 DB가 없으므로 메모리(List, Map, Dict 등)를 데이터 저장소로 사용합니다.
-6. **객체지향 원칙 적용**
-    - 객제 지향 설계 원칙에는 다양한 내용이 있으니 먼저 객체 지향이 뭔지 보고 이런 제약을 왜 둘까하는 이유를 생각해보세요.
-    - 제약
-        - **원시값 포장:** 금액(Money)이나 수량(Quantity)을 단순 `int`나 `number` 타입으로 쓰지 말고, 검증 로직을 포함한 별도의 클래스로 감싸서(Wrap) 사용하세요. (예: 음수 금액이 들어오는 것을 방지)
-        - **`else` 예약어 사용 지양:** 조기 리턴(Early Return)을 활용하여 코드의 가독성을 높이세요.
-        - **들여쓰기(Indent) 1단계 유지:** 하나의 함수(메서드) 안에서 `if`문 안에 `for`문이 들어가는 등의 2단계 이상 들여쓰기를 허용하지 않습니다. 함수를 작게 쪼개세요.
+**Internship baseline:** [v1.0.0-internship](https://github.com/jisung1017/internship/tree/v1.0.0-internship/assignments_2), August 20, 2026. All features below exist in that baseline. This README and the current architecture guide are post-internship documentation; authentication and a browser UI are future work.
 
-## 🚀 실행 방법
+## Features
 
-### 1. 프로젝트 클론
+- Menu browsing with category/tag filters, pagination, option groups, prices, and stock-based availability.
+- Orders with validated quantities and options, aggregated ingredient requirements, and simulated payment approval.
+- UUID order lookup and an optional UUID idempotency key for order creation.
+- Inventory queries, restocking, and paginated/filterable inventory history.
+- Order status changes and cancellation with inventory restoration.
+- Today's orders and sales totals (UTC day boundary; cancelled orders excluded from the total).
+- A CLI and FastAPI routes using shared application services.
 
-```bash
-git clone <repository>
-cd assignments_2
+## Tech Stack
+
+Python **3.14** (`requires-python >=3.14`, `.python-version` selects 3.14), FastAPI, Pydantic, SQLAlchemy 2, psycopg 3, PostgreSQL **17** in Compose, Alembic, Pytest, and uv. [`uv.lock`](uv.lock) pins the dependency versions. The package metadata still uses the original scaffold name `assignment-template`.
+
+## System Architecture
+
+```mermaid
+flowchart TB
+    API[FastAPI routers / request and response DTOs] --> SERVICES[OrderApplicationService / KioskAdminService]
+    CLI[CLI / CartService / PendingOrder] --> SERVICES
+    SERVICES --> DOMAIN[Menus / Recipes / Cart / Order / Inventory / Payment]
+    SERVICES --> PORTS[Repository protocols / AbstractUnitOfWork]
+    ADAPTERS[SQLAlchemy repositories / SqlAlchemyUnitOfWork] -. implement .-> PORTS
+    ADAPTERS --> DB[(PostgreSQL)]
+    ALEMBIC[Alembic] --> DB
 ```
 
-### 2. 가상환경 생성
+- [`domain/`](src/domain/) contains business objects and validation rules.
+- [`application/`](src/application/) coordinates use cases and defines repository and Unit of Work contracts.
+- [`infrastructure/`](src/infrastructure/) maps domain objects to ORM records and implements persistence and transaction boundaries.
+- [`interface/`](src/interface/) provides console interaction and HTTP parsing/serialization.
+- [`src/main.py`](src/main.py) assembles the CLI; [`api/dependencies.py`](src/interface/api/dependencies.py) assembles API services.
+
+The design follows Clean Architecture principles, with an existing exception: `OrderApplicationService` imports SQLAlchemy's `IntegrityError` to handle UUID insert races.
+
+See [Architecture & ERD](docs/ARCHITECTURE.md) for the domain model, database relationships, order processing flow, concurrency control, idempotency, and transaction management. [Documentation index](docs/README.md) distinguishes current descriptions from historical guides and reviews.
+
+## API Endpoints
+
+Routes are defined in [`kiosk.py`](src/interface/api/routers/kiosk.py), [`admin.py`](src/interface/api/routers/admin.py), and [`app.py`](src/interface/api/app.py).
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| GET | `/` | Welcome message |
+| GET | `/api/v1/menus` | Filters: `category`, `tag`; `page >= 1`, `1 <= size <= 100` |
+| POST | `/api/v1/orders` | Create an order; returns 201 and `Location` |
+| GET | `/api/v1/orders/{order_uuid}` | Persisted order detail; 404 when absent |
+| GET | `/api/v1/admin/orders` | Today's orders; optional `status` filter |
+| PATCH | `/api/v1/admin/orders/{order_id}/status` | Update status using the numeric database ID |
+| GET | `/api/v1/admin/inventory` | Current stock |
+| POST | `/api/v1/admin/inventory/restock` | Add a positive quantity of an existing ingredient |
+| GET | `/api/v1/admin/inventory/history` | Optional `ingredient_name`; pagination (default size 50, maximum 100) |
+| GET | `/api/v1/admin/sales/today` | Non-cancelled sales total plus today's order records |
+
+Order creation requires a UUID-valued **`X-Kiosk-UUID`** header. It is echoed as `client_uuid`, not persisted as an authenticated identity. **`Idempotency-Key`** is a separate, optional UUID header. Request items use `menu_name`, positive `quantity`, and `selected_option_ids` or `selected_options`; nonempty IDs take precedence over names. Inspect `/docs` and the menu response for valid option selections rather than assuming fixed seed IDs.
+
+Out-of-stock failures return 409; handled business validation/payment failures return 400; FastAPI request validation returns 422. Administrator routes currently have no authentication or role checks.
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.14 and uv.
+- A running Docker engine with Compose, or a separately provisioned PostgreSQL instance.
+- Run the following commands from `assignments_2/`.
+
+### Local Database and API
 
 ```bash
-uv sync
+uv sync --frozen
+docker compose up -d postgres
+# Wait until PostgreSQL is ready.
+docker compose exec postgres pg_isready
+uv run alembic upgrade head
+uv run python scripts/seed.py
+uv run uvicorn src.interface.api.app:app --host 127.0.0.1 --port 8000
 ```
 
-### 3-1. docker 설정
+Open `http://127.0.0.1:8000/docs` (Swagger UI), `/redoc`, or `/openapi.json`. The API does not migrate or seed the database on startup.
 
-```bash
-docker compose up -d    # 백그라운드로 DB 실행
-docker compose ps       # 잘 떴는지 확인
-docker compose down -v  # 끌 때 
-```
+Compose starts PostgreSQL only, binds its port to `127.0.0.1:5432`, and persists data in a named volume. The host-side default connection in [`db.py`](src/infrastructure/db.py) matches the bundled local Compose configuration. These checked-in credentials are development examples, not production secrets.
 
-### 3-2. Alembic 마이그레이션 진행
-```bash
-uv run alembic stamp head     # Alembic 초기화
-uv run alembic upgrade head   # Alembic 마이그레이션 (업그레이드)
-uv run alembic check          # 정상 동기화 확인
-```
+For a different database, export `DATABASE_URL` **before** running the API, CLI, migration, or seed commands. Use your own connection values and avoid committing them. Both `postgresql://` and `postgresql+psycopg://` URLs are accepted by the SQLAlchemy entry points. `.env` files are not automatically loaded by Python; Compose's environment handling does not configure the host process. [`migrations/env.py`](migrations/env.py) chooses the environment variable or the application default rather than using the URL in `alembic.ini` as its final source.
 
-### 4. FastAPI Web API 서버 구동
+Alembic revisions are the current migration path. [`001_init.sql`](migrations/001_init.sql) and `002_init.sql.disabled` are historical artifacts, not a second setup sequence. The JSON seed routine skips loading if a menu already exists; it is not a general reconciliation tool for partially populated databases.
 
-```bash
-uv run uvicorn src.interface.api.app:app --host 0.0.0.0 --port 8000
-```
-🌐 접속 주소 가이드
+**Verification limit:** fresh PostgreSQL migration/seed startup has not been verified during this documentation update. The latest migration adds non-null columns without backfilling existing rows, so upgrading a populated older schema needs review. Do not run these migrations against valuable data without a separate migration assessment.
 
-내 컴퓨터 접속 (Swagger API 문서): 
+### CLI
 
-http://localhost:8000/docs 또는 http://127.0.0.1:8000/docs
-
-다른 기기/외부 접속: 
-
-http://[서버PC의-IP주소]:8000/docs (예: http://192.168.0.15:8000/docs)
-
-(주의: 브라우저 주소창에 0.0.0.0을 직접 입력하면 ERR_ADDRESS_INVALID 에러가 발생하므로 반드시 localhost 또는 실제 IP를 사용해야 합니다.)
-
-### 5. CLI 콘솔 실행
+After preparing the database:
 
 ```bash
 uv run python -m src.main
 ```
 
-### 6. 테스트
+### Stop the Local Database
 
 ```bash
-docker exec -it kiosk-db psql -U kiosk -c "CREATE DATABASE kiosk_test;"
-uv run pytest
+docker compose stop postgres
 ```
 
-> DB 관련 테스트(`tests/infrastructure/`)는 실제 PostgreSQL 접속이 필요합니다. 테스트마다 트랜잭션을 열고 끝나면 롤백해서 시드 데이터를 건드리지 않습니다.
-> 동시성 테스트는 test docker 를 활용하여 테스트를 진행합니다.
+The named volume retains local data.
 
+## Testing Strategy
 
----
+| Layer | Existing tests | What they establish |
+| --- | --- | --- |
+| Domain | [`tests/domain/`](tests/domain/) | Value-object invariants, recipes, options, cart/order behavior, inventory changes |
+| Application | [`tests/application/`](tests/application/) | Use-case orchestration and Unit of Work behavior with fakes |
+| HTTP / CLI | [`tests/interface/`](tests/interface/), [`test_kiosk_order_api.py`](tests/test_kiosk_order_api.py), [`test_acceptance.py`](tests/test_acceptance.py) | DTOs, HTTP responses, and console scenarios; API dependencies are replaced with fake services |
+| ORM | [`tests/infrastructure/`](tests/infrastructure/) | Mapping and repository/transaction behavior using SQLite in memory |
+| Concurrency | [`test_concurrency.py`](tests/test_concurrency.py) | PostgreSQL scenarios for stock contention, restock/order races, cancellation races, and duplicate UUID requests |
 
-## 실행 화면
+Run the suite that does not require a PostgreSQL server:
 
-```text
-=========== Cafe Mini Kiosk ===========
-
-                [MENU]
----------------------------------------
-1. 아메리카노                   3000원
-2. 카페라떼                     4000원
-3. 에스프레소                   3500원
-4. 카푸치노                     4500원
-5. 카라멜마키아토               5500원
----------------------------------------
-6. 장바구니             (잔액: 100000000원)
-0. 종료
->> 메뉴 선택: 1
-
-옵션(아메리카노)
-1. HOT/ICE: hot
-2. 샷추가 (+500원): 2
-3. 시럽추가 (+200원): 0
->> 수량 선택 (1~10): 3
-장바구니에 상품이 담겼습니다.
-
-=========== Cafe Mini Kiosk ===========
-
-                [MENU]
----------------------------------------
-1. 아메리카노                   3000원
-2. 카페라떼                     4000원
-3. 에스프레소                   3500원
-4. 카푸치노                     4500원
-5. 카라멜마키아토               5500원
----------------------------------------
-6. 장바구니             (잔액: 100000000원)
-0. 종료
->> 메뉴 선택: 5
-
-옵션(카라멜마키아토)
-1. HOT/ICE: ice
-2. 샷추가 (+500원): 0
-3. 시럽추가 (+200원): 3
-잘못된 입력입니다. 시럽추가은(는) 최대 2개까지 선택 가능합니다.
-3. 시럽추가 (+200원): 2
->> 수량 선택 (1~10): 6
-장바구니에 상품이 담겼습니다.
-
-=========== Cafe Mini Kiosk ===========
-
-                [MENU]
----------------------------------------
-1. 아메리카노                   3000원
-2. 카페라떼                     4000원
-3. 에스프레소                   3500원
-4. 카푸치노                     4500원
-5. 카라멜마키아토               5500원
----------------------------------------
-6. 장바구니             (잔액: 100000000원)
-0. 종료
->> 메뉴 선택: 6
-
-[장바구니]
-- 아메리카노 (HOT, 샷추가 x2)x3 : 12000원
-- 카라멜마키아토 (ICE, 시럽추가 x2)x6 : 35400원
-
-총 금액: 47400원
-1. 메뉴 더 담기
-2. 결제하기
->> 선택: 1
-=========== Cafe Mini Kiosk ===========
-
-                [MENU]
----------------------------------------
-1. 아메리카노                   3000원
-2. 카페라떼                     4000원
-3. 에스프레소                   3500원
-4. 카푸치노                     4500원
-5. 카라멜마키아토               5500원
----------------------------------------
-6. 장바구니             (잔액: 100000000원)
-0. 종료
->> 메뉴 선택: 3
-
-옵션(에스프레소)
-1. 샷추가 (+500원): 2
->> 수량 선택 (1~10): 2
-장바구니에 상품이 담겼습니다.
-
-=========== Cafe Mini Kiosk ===========
-
-                [MENU]
----------------------------------------
-1. 아메리카노                   3000원
-2. 카페라떼                     4000원
-3. 에스프레소                   3500원
-4. 카푸치노                     4500원
-5. 카라멜마키아토               5500원
----------------------------------------
-6. 장바구니             (잔액: 100000000원)
-0. 종료
->> 메뉴 선택: 6
-
-[장바구니]
-- 아메리카노 (HOT, 샷추가 x2)x3 : 12000원
-- 카라멜마키아토 (ICE, 시럽추가 x2)x6 : 35400원
-- 에스프레소 (샷추가 x2)x2 : 9000원
-
-총 금액: 56400원
-1. 메뉴 더 담기
-2. 결제하기
->> 선택: 2
-
-총 금액: 56400원
-1. 결제 승인
-2. 취소
->> 선택: 1
-결제에 성공했습니다! 남은 잔액: 99943600원
-
-=========== Cafe Mini Kiosk ===========
-
-                [MENU]
----------------------------------------
-1. 아메리카노                   3000원
-2. 카페라떼                     4000원
-3. 에스프레소                   3500원
-4. 카푸치노                     4500원
-5. 카라멜마키아토               5500원
----------------------------------------
-6. 장바구니             (잔액: 99943600원)
-0. 종료
->> 메뉴 선택: 77
-
-=========== [개발자 모드] ===========
-
-[재고 현황]
-- 원두: 99766g
-- 물: 499250ml
-- 우유: 299820ml
-- 컵: 9989개
-- 시럽: 99820ml
-
-[최근 이력]
-  14:20:58 원두 -30 (CONSUME)
-  14:20:58 시럽 -60 (CONSUME)
-  14:20:58 시럽 -60 (CONSUME)
-  14:20:58 원두 -20 (CONSUME)
-  14:20:58 원두 -20 (CONSUME)
-
-1. 재고 추가
-2. 판매 내역
-0. 종료
->> 선택: 2
-
-[오늘 판매 내역]
-  #1 05:20:58 아메리카노 x3, 카라멜마키아토 x6, 에스프레소 x2 = 56400원
-
-총 매출: 56400원
-
-
-[재고 현황]
-- 원두: 99766g
-- 물: 499250ml
-- 우유: 299820ml
-- 컵: 9989개
-- 시럽: 99820ml
-
-[최근 이력]
-  14:20:58 원두 -30 (CONSUME)
-  14:20:58 시럽 -60 (CONSUME)
-  14:20:58 시럽 -60 (CONSUME)
-  14:20:58 원두 -20 (CONSUME)
-  14:20:58 원두 -20 (CONSUME)
-
-1. 재고 추가
-2. 판매 내역
-0. 종료
->> 선택: 1
->> 입고할 재료명 입력: 원두
->> 입고 수량: 120
-원두 120개 입고 완료.
-
-
-[재고 현황]
-- 원두: 99886g
-- 물: 499250ml
-- 우유: 299820ml
-- 컵: 9989개
-- 시럽: 99820ml
-
-[최근 이력]
-  14:20:58 시럽 -60 (CONSUME)
-  14:20:58 시럽 -60 (CONSUME)
-  14:20:58 원두 -20 (CONSUME)
-  14:20:58 원두 -20 (CONSUME)
-  14:21:09 원두 +120 (RESTOCK)
-
-1. 재고 추가
-2. 판매 내역
-0. 종료
->> 선택: 0
-개발자 모드를 종료합니다.
-
-=========== Cafe Mini Kiosk ===========
-
-                [MENU]
----------------------------------------
-1. 아메리카노                   3000원
-2. 카페라떼                     4000원
-3. 에스프레소                   3500원
-4. 카푸치노                     4500원
-5. 카라멜마키아토               5500원
----------------------------------------
-6. 장바구니             (잔액: 99943600원)
-0. 종료
->> 메뉴 선택: 0
-종료합니다.
+```bash
+uv run pytest tests --ignore=tests/test_concurrency.py -q
 ```
 
-## 구현 내용
+API tests use the global dependency overrides in [`tests/conftest.py`](tests/conftest.py); they do not exercise real HTTP-to-PostgreSQL persistence. SQLite tests skip PostgreSQL advisory locks and row locks and cannot verify those mechanisms.
 
-### 아키텍처
-```
-src/
-├── domain/            # 순수 비즈니스 로직 (외부 의존성 없음)
-│
-├── application/       # "무엇을 할지"를 조율하는 계층 (DB를 알지 못함)
-│   ├── order_service.py         # 장바구니 담기 + 재고확인→결제→차감 원자적 처리 (핵심 도메인 조율)
-│   ├── checkout_service.py      # 결제 유스케이스 실행 + 주문 이력 영속화 오케스트레이션
-│   ├── kiosk_admin_service.py   # 관리자(개발자) 모드 유스케이스(재고조회/입고/판매내역) + 영속화
-│   ├── kiosk_session.py         # 화면 상태(Step) 전이만 담당 (장바구니 흐름 포함)
-│   ├── kiosk_state.py           # 프로그램 시작 시 로딩 결과를 담는 DTO
-│   ├── pending_order.py         # 메뉴 선택 중(옵션 고르는 중) 임시 상태
-│   └── *_persister.py / *_reader.py  # 포트(Protocol) — "이런 능력이 외부에 있어야 한다"는 계약만 선언, 구현은 없음
-│
-├── infrastructure/
-│   ├── db.py                    # DB 커넥션 생성 + 트랜잭션 컨텍스트매니저 (DATABASE_URL 환경변수 사용)
-│   └── repositories/            # SQL이 존재하는 유일한 곳
-│       ├── postgres_*_repository.py    # 로우레벨: 테이블 1개 ↔ 도메인 객체 변환 (commit 안 함)
-│       └── postgres_*_persister.py,    # 하이레벨: Repository 여러 개를 조합 + 트랜잭션 경계(언제 커밋할지) 결정
-│           postgres_*_reader.py,       #           (application 포트의 실제 구현체)
-│           postgres_kiosk_state_loader.py
-│
-├── interface/
-│   └── cli.py          # CLI 입출력 + 입력값을 검증하는 순수 함수
-│
-└── main.py              # 조립 지점 (Composition Root) — 위 모든 걸 조립만 하고, DB를 직접 만지지 않음
+**Concurrency tests drop and recreate all ORM tables at the selected URL.** Use only an explicitly provisioned, disposable PostgreSQL test database and a test-only database account. Set `TEST_DATABASE_URL` to that database, then run:
 
-migrations/
-├── 001_init.sql          # 스키마 (테이블 + 제약조건)
-└── 002_init.sql          # 초기 시드 데이터
+```bash
+uv run pytest tests/test_concurrency.py -q
 ```
 
+The fixture prefers `TEST_DATABASE_URL`, falls back to `DATABASE_URL`, and skips only if no URL is set or it equals the built-in development default. It does not prove that another supplied URL is safe. The legacy `connection` fixture under `tests/infrastructure/conftest.py` also reads `DATABASE_URL` directly if requested.
 
-- **domain**: `Money`, `Quantity`, `Ingredient`, `Menu`, `Recipe`, `Option`, `OptionGroup`, `Inventory`, `Cart`, `Order`, `Payment` 등. 모두 외부 라이브러리나 콘솔 입출력, DB에 의존하지 않아, 어떤 UI(CLI/웹 등)와 어떤 저장소(Postgres/인메모리 등)로도 재사용 가능합니다.
-- **application**: 두 종류의 파일이 있습니다.
-    1. **오케스트레이션 클래스**(`OrderService`, `CheckoutService`, `KioskAdminService`, `KioskSession`) — 도메인 객체 여러 개를 조합해 하나의 유스케이스로 묶습니다. 검증/계산 로직 자체는 도메인에 위임합니다.
-    2. **포트(Protocol)**(`InventoryPersister`, `OrderPersister`, `OrderHistoryReader`) — "재고를 저장한다", "주문을 원자적으로 저장한다" 같은 능력을 인터페이스로만 선언합니다. `application`은 이 계약만 알고, 실제로 Postgres인지 다른 무엇인지는 모릅니다.
-- **infrastructure/repositories**: `PostgreSQL` 문법으로 이루어진 SQL을 이 계층에만 둡니다. 로우레벨(Repository)과 하이레벨(Persister/Reader/Loader)로 나뉘어 있는데, 로우레벨은 "SQL ↔ 도메인 객체 변환"만 담당하고 커밋을 하지 않으며, 하이레벨은 로우레벨 여러 개를 조합해 "언제 트랜잭션을 열고 커밋할지"를 결정합니다. `application`의 포트는 오직 하이레벨 클래스만 가리킵니다.
-- **interface**: `CLI` 클래스와 입력값을 검증하는 순수 함수(`parse_menu_choice`, `parse_quantity` 등)로 구성됩니다. 파싱 함수들은 `input()` 호출과 분리되어 있어 콘솔 없이 단위 테스트가 가능합니다.
+These scenarios are correctness checks, not benchmarks. No throughput, latency, coverage percentage, or PostgreSQL pass result is claimed here.
 
-### 핵심 도메인 모델
+## Retrospective
 
-| 클래스 | 역할 |
-|---|---|
-| `Money` / `Quantity` | 원시값(int) 포장. 음수 방지 등 불변식을 생성 시점에 강제 |
-| `Ingredient` | 재료(원두, 물, 우유, 컵 등)를 나타내는 값 객체. 이름 기반 동등성 |
-| `Recipe` / `RecipeItem` | 메뉴 또는 옵션 하나가 소비하는 재료와 수량의 목록 |
-| `Menu` | 이름, 가격, 레시피, 선택 가능한 옵션 그룹(`OptionGroup`)을 가짐 |
-| `Option` / `OptionGroup` | 옵션 하나(이름, 추가 금액, 소비 레시피)와 그 옵션들의 묶음(최소/최대 선택 개수) |
-| `Inventory` / `InventoryItem` | 재료별 재고 수량 관리, 여러 레시피를 합산해 소비 가능 여부를 판단 |
-| `Cart` / `CartItem` | 장바구니와 장바구니에 담긴 항목(메뉴+수량+선택 옵션) |
-| `Order` | 장바구니를 스냅샷으로 변환한 확정 주문 (결제 유스케이스 안에서만 존재) |
-| `OrderRecord` / `OrderRecordItem` | DB에 저장된 주문 이력을 조회할 때 쓰는 읽기 전용 DTO. `Order`와 달리 `id`/`created_at`을 가짐 |
-| `Payment` | 잔액 보유 및 결제 처리, 중복 결제 방지 |
-| `InventoryHistory` | 재고 차감 및 입고 이력 목록 |
+### Model the Requirement Before Extending the Code
 
-### DB 테이블 구조
+After the first assignment, I felt more comfortable writing tests, but the kiosk exposed a different gap: I still tended to think about implementation before fully understanding the domain. I discovered during development that options also consume ingredients. That requirement affected entities, recipes, inventory calculations, and tests together.
 
-DB는 크게 세 그룹으로 나뉩니다: **카탈로그**(메뉴/재료, 거의 안 바뀜) / **재고**(주문마다 바뀌는 유일한 가변 상태) / **주문 이력**(결제 결과를 기록만 하는 append-only 로그).
+The current model includes ingredient recipes for both menus and options. `CartItem` collects those requirements, and inventory validation checks their combined effect across an order. The acceptance suite includes a checkout that consumes an option's ingredients. That was the kind of scenario I wished I had written before modeling checkout. [Checkout acceptance tests](tests/test_acceptance.py)
 
-| 테이블 | 역할 | 비고 |
-|---|---|---|
-| `ingredient` | 재료 마스터 (이름, 단위) | `id`(BIGINT, surrogate PK) + `name`(UNIQUE) + `unit`(g/ml/개, 표시용) |
-| `inventory` | 재료별 현재 재고 수량 | PK가 `ingredient_id` 그 자체 (재료와 1:1이라 별도 surrogate id 없음). `quantity >= 0` CHECK |
-| `menu` | 메뉴 마스터 (이름, 가격) | `id` PK, `name` UNIQUE |
-| `recipe_item` | 메뉴 1개가 소비하는 재료 목록 | `menu_id`+`ingredient_id` FK. 자체 `id` PK를 가지되, `(menu_id, ingredient_id)`는 UNIQUE로 중복 방지 |
-| `option_group` | 메뉴에 딸린 옵션 그룹(온도, 샷추가 등) | `menu_id`별로 각자 소유 (그룹을 여러 메뉴가 공유하지 않음). `min_select`/`max_select`/`selection_mode`(`choice`\|`count`) |
-| `option_item` | 옵션 그룹 안의 선택지 | `option_group_id` FK, 추가 금액 |
-| `option_recipe_item` | 옵션 1개가 추가로 소비하는 재료 목록 | `recipe_item`과 동일한 구조(자체 `id` + UNIQUE 복합키) |
-| `customer_order` | 확정된 주문 1건 | `id`, `created_at`(기본값 `now()`), `total_price`. `order`는 SQL 예약어라 이름을 피함 |
-| `order_item` | 주문에 담긴 메뉴 한 줄 | `menu_name`/`menu_price`를 **스냅샷**으로 저장 (FK 아님) |
-| `order_item_option` | 그 줄에 선택된 옵션 | `option_name`/`additional_price`도 스냅샷 |
+### Design the API Around Checkout
 
-**설계에서 의도적으로 정한 것들**:
-- **정수 PK + 스냅샷 텍스트 조합**: 테이블 내부 조인(`menu_id`, `ingredient_id` 등)은 전부 정수 `id`로 빠르게 하되, `order_item`/`order_item_option`은 메뉴·옵션을 FK로 참조하지 않고 이름/가격을 그대로 복사해서 저장합니다. 나중에 메뉴 가격이 바뀌어도 과거 주문 이력의 "그때 가격"은 절대 안 바뀌어야 하기 때문입니다.
-- **종속 테이블에도 surrogate id**: `recipe_item`/`option_recipe_item`은 원래 `(menu_id, ingredient_id)` 복합키만 PK로 썼는데, 나중에 이 특정 행을 참조하는 또 다른 종속 테이블이 생길 가능성을 대비해 자체 `id`를 추가했습니다. 중복 방지 규칙은 `UNIQUE` 제약으로 그대로 유지됩니다.
-- **`inventory`는 예외적으로 surrogate id 없이 유지**: `ingredient`와 1:1 관계라 `ingredient_id` 자체가 이미 안정적인 키 역할을 하고, 이 행을 직접 참조할 종속 테이블이 생길 가능성이 낮다고 판단했습니다.
+The August API reviews made me revisit how the client places an order. I had largely exposed the CLI workflow through HTTP, and I struggled to explain how a request reached the database after the ORM migration. The feedback asked me to think through the customer journey, decide which state belonged to the client, and make the API understandable to someone using Swagger for the first time.
 
-### 주문 처리 흐름 (`OrderService`, `CheckoutService`)
+In the baseline, the API takes the complete set of order items in one request. The application service builds a cart for that request, and clients can select options by numeric ID. The menu endpoint exposes category and tag filters and a stock-based availability flag. [Order application service](src/application/order_application_service.py) · [Kiosk routes](src/interface/api/routers/kiosk.py) · [Request and response schemas](src/interface/api/schemas.py)
 
-1. `OrderService.add_to_cart`: 선택한 옵션이 유효한지 메뉴에 위임해 검증한 뒤, 유효할 때만 장바구니에 담습니다.
-2. `OrderService.checkout` (순수 도메인 계산, 메모리에서만 동작):
-   - 장바구니를 `Order`로 변환합니다.
-   - 메뉴+옵션의 레시피를 모두 합산해 재고가 충분한지 먼저 확인합니다(`Inventory.can_consume_all`). 이때 여러 메뉴가 같은 재료를 공유하는 경우도 정확히 합산해서 판단합니다.
-   - 재고가 부족하면 장바구니를 비우고 `OutOfStockError`를 던집니다(잔액은 차감되지 않음, 원자성 보장).
-   - 재고가 충분하면 결제를 시도하고, 잔액이 부족하면 `InsufficientBalanceError`를 던지며 장바구니를 비웁니다.
-   - 결제와 재고 확인이 모두 성공한 뒤에만 실제로 재고를 차감합니다.
-3. `CheckoutService.checkout`: 위 도메인 계산이 성공하면, 주문 이력 저장과 재고 저장을 **하나의 DB 트랜잭션**으로 묶어 커밋합니다(`OrderPersister`). 둘 중 하나라도 실패하면 DB에는 아무 흔적도 안 남습니다.
+### Make the Whole Use Case Consistent
 
-### 예외 처리
+Moving from in-memory objects to a database made transaction boundaries concrete. Saving an order and updating inventory separately would leave room for partial results. The current Unit of Work lets application services commit order records, stock changes, and inventory history through a shared SQLAlchemy session.
 
-- `OutOfStockError`, `InsufficientBalanceError`를 커스텀 예외로 정의해, 실패 원인에 따라 CLI에서 서로 다른 안내 메시지를 출력합니다.
-- 재고 부족/잔액 부족 어느 경우든 장바구니는 초기화되며, 재고 부족 시에는 잔액이 절대 차감되지 않도록 순서를 설계했습니다(재고 확인 → 결제 → 재고 차감).
+Review feedback also pushed me to explain what a lock protects when several kiosks share inventory. The baseline uses transaction-level ingredient locks for stock updates and a row lock when changing an order's status. The PostgreSQL scenarios cover competing orders, restocks, and cancellations. [Concurrency tests](tests/test_concurrency.py)
 
-### 테스트 전략
+### Preserve the Upgrade Path
 
-- **단위 테스트**: 각 도메인 클래스(`Money`, `Quantity`, `Menu`, `Inventory` 등)의 생성 검증과 동작을 개별적으로 검증합니다.
-- **통합 테스트**: `OrderService`가 `Payment`, `Inventory`, `Cart` 등 여러 도메인 객체를 올바르게 조합하는지 검증합니다(원자성 포함).
-- **인수 (E2E) 테스트**: `pytest`의 `monkeypatch`로 `input()`을 대체해, 실제 사용자가 콘솔에서 메뉴를 고르고 결제하는 시나리오 전체를 Given-When-Then 형태로 검증합니다.
-- **인프라(DB) 테스트**: 실제 PostgreSQL에 붙여서 Repository/Persister/Reader를 검증합니다. 매 테스트마다 트랜잭션을 열고 끝나면 롤백하는 방식으로 격리하며(시드 데이터를 건드리지 않음), 테스트가 직접 필요한 데이터를 INSERT한 뒤 검증합니다. 동시성(행 잠금) 테스트는 별도 커넥션 2개 + 스레드로 실제 블로킹 시간을 측정해서 검증합니다.
+During the internship I replaced an earlier Alembic revision and stamped my local database. That let me continue locally, but a database on the old revision could no longer follow the upgrade path. The baseline now has a linked revision chain. Compatibility with earlier databases still needs verification, especially when they already contain data. [Alembic revisions](migrations/versions/) · [Migration caveats](#getting-started)
 
-## 💡 회고
+### Improvements Visible in the Baseline
 
-### 1. 설계보다 구현을 먼저 생각했던 습관
+| Challenge | Applied response | Evidence |
+| --- | --- | --- |
+| Options affected both price and stock | Give option items recipes and include their requirements in the order | [Cart item](src/domain/cart_item.py) · [Checkout acceptance tests](tests/test_acceptance.py) |
+| API review questioned who should own cart state and how clients should select options | Build a cart from each order request and accept numeric option IDs, with name-based selection still supported | [Application service](src/application/order_application_service.py) · [Cart service](src/application/cart_service.py) |
+| Several repository writes needed one commit boundary | Introduce a shared-session Unit of Work | [Introduction commit](https://github.com/jisung1017/internship/commit/e2412dc) · [Transaction tests](tests/infrastructure/test_sqlalchemy_uow.py) |
+| Concurrent stock updates needed coordination | Acquire ingredient advisory locks in a consistent order and restrict inventory saves to that scope | [Inventory repository](src/infrastructure/repositories/orm_inventory_repository.py) · [Concurrency scenarios](tests/test_concurrency.py) |
 
-과제 1을 마친 뒤에는 TDD 개발을 어느 정도 이해했다고 생각했고, 자신 있게 과제 2를 시작했다. 하지만 프로젝트를 진행하면서 TDD는 단순히 테스트를 먼저 작성하는 것이 아니라, **요구사항 분석과 도메인 설계가 함께 이루어져야 하는 개발 방식**이라는 것을 깨달았다.
+These responses address concrete parts of the design; the [known limitations](#known-limitations) describe cases they do not fully solve.
 
-가장 크게 느낀 점은 **도메인 모델링의 중요성**이었다. 개발을 진행하는 도중 옵션에도 재고를 차감해야 한다는 요구사항을 뒤늦게 발견했고, 이를 반영하기 위해 엔티티 구조와 테스트 코드를 모두 수정해야 했다. 핵심 도메인 모델에 새로운 필드가 추가되면서 연관된 테스트와 구현이 줄줄이 변경되는 경험을 하며, 구현을 시작하기 전에 요구사항을 충분히 분석하고 전체 도메인 구조를 설계하는 과정이 얼마나 중요한지 몸소 느꼈다.
+### Commitments for Future Work
 
-또한 구현을 먼저 떠올린 뒤 테스트를 작성하는 습관이 아직 남아 있다는 점도 알게 되었다. 앞으로는 코드보다 테스트를 먼저 고민하고, 구현 전에 도메인 모델과 예외 상황을 충분히 정리하는 습관을 만들어가고자 한다.
+- Sketch the full order flow and write an acceptance scenario before introducing or changing domain objects.
+- Turn feedback about weak boundary tests into a checklist: test the minimum, maximum, neighboring values, and relevant empty, zero, or negative inputs.
+- Trace a request from the route through the service and ORM, then document the expected payload and outcome so a reviewer can reproduce it.
+- Preserve migration revisions and verify both a fresh setup and an upgrade from an earlier schema.
 
----
+My next post-internship goals follow the feedback on authentication, a simple interface, API security, and data protection. Those are planned extensions, separate from the internship results above.
 
-### 2. TDD를 통해 배운 점
+## Known Limitations
 
-이번 프로젝트를 진행하면서 단위 테스트만큼이나 **인수 테스트(Acceptance Test)의 중요성**을 새롭게 배웠다. 작은 단위 테스트부터 작성하다 보니 전체 사용자 시나리오를 충분히 고려하지 못했고, 요구사항이 변경될 때 예상보다 많은 리팩터링이 발생했다.
+- **Access control:** no OAuth/OIDC, sessions, RBAC, or order ownership checks. `X-Kiosk-UUID` is not authentication. CORS currently permits all origins (credentials disabled); rate limiting, log masking, and administrator audit logging are not implemented.
+- **Payment:** `Payment` is a boolean approval simulation. Database rollback cannot undo an external payment; there is no payment provider integration or compensation workflow.
+- **Idempotency:** keys are optional, globally unique order UUIDs with no client scope or request fingerprint. Reuse with a different cart is not rejected; the POST response is rebuilt from the current cart. Use GET order detail for the persisted snapshot. Retries still validate the current menu/options before checking the stored UUID.
+- **Cancellation:** ingredient restoration uses current catalog recipes (ID lookup with name fallback), not immutable recipe snapshots; missing catalog items can be skipped. Catalog changes could affect restoration accuracy.
+- **Availability:** menu-list availability checks the base recipe for one serving. It does not guarantee stock for a particular quantity or option combination; checkout performs aggregate stock validation under locks. The API order path does not call `Menu.validate_orderable`, so the manual sold-out flag is not enforced there.
+- **Consistency scope:** advisory locks coordinate cooperating repository writers. Direct SQL or another writer that ignores the same protocol can bypass them. Current ORM models do not declare nonnegative stock CHECK constraints.
+- **Sales queries:** totals use a UTC day boundary. The total and order list are obtained in separate service calls and may differ during concurrent updates.
+- **Operations:** Compose includes only the database. No browser UI, integrated deployment, or GitHub Actions CI exists yet. See migration and test isolation caveats above.
 
-또한 UI는 변경이 잦고 사용자 경험에 따라 쉽게 수정될 수 있기 때문에, UI 자체보다 **도메인과 애플리케이션 계층의 테스트를 견고하게 만드는 것이 더 중요하다**는 점도 알게 되었다. 앞으로는 먼저 전체 흐름을 인수 테스트로 정의한 뒤, 이를 만족시키기 위해 도메인과 애플리케이션을 작은 단위의 TDD 사이클(Red → Green → Refactor)로 구현하는 방식을 연습해보고자 한다.
-
-Git을 사용하는 방식에서도 많은 것을 배웠다. 프로젝트를 마친 뒤 GitHub의 커밋 기록을 다시 살펴보며 스스로 코드 리뷰를 해보니, 각 커밋이 어떤 의도로 작성되었는지 흐름을 쉽게 따라갈 수 있었다. 처음에는 커밋이 너무 많은 것이 아닐까 걱정했지만, 오히려 변경 의도가 명확한 작은 단위의 커밋이 프로젝트를 이해하고 리뷰하는 데 훨씬 도움이 된다는 점을 느꼈다.
-
----
-
-### 3.  DB 마이그레이션 및 데이터 계층 개발에서 느낀 점
-
-인메모리 구조에서 DB 체제로 전환하는 마이그레이션 과제를 진행하며, 단순한 SQL 작성을 넘어 **데이터 정합성, 3계층 아키텍처, 그리고 도메인 흐름과 추상화의 단위**에 대해 깊이 있게 고민해볼 수 있었다.
-
-첫째, 모든 테이블에는 각 행을 식별하고 순서를 보장할 수 있는 **고유 ID와 명시적 식별 기준이 반드시 필요하다**는 점을 배웠다. 시드 데이터를 넣을 때 DB 내부 동작을 맹신하여 고유 순서 없이 삽입했다가 `id` 순서가 뒤바뀌어 CLI 옵션 선택 프로세스가 마비되는 버그를 경험했다. 이를 `VALUES`에 명시적 순번(`seq`) 컬럼을 추가하고 `ORDER BY`로 정렬하여 해결하면서, 데이터베이스 단에서 순서와 정합성을 명시적으로 제어하는 습관의 중요성을 깨달았다. 또한 `UPDATE` 작업 시 영향받은 행이 0개일 때 조용히 넘어가지 않도록 `cursor.rowcount` 기반의 방어 코드를 두어 스포일러성 오류를 조기에 차단했다.
-
-둘째, **3계층 구조(3-Tier Architecture)를 엄격히 준수**하는 것이 애플리케이션의 유연성을 결정짓는다는 것을 체감했다. 초기에는 `main.py`에서 DB 트랜잭션을 직접 열어 데이터 계층을 침범했으나, `PostgresKioskStateLoader`를 도입하여 구성 루트가 데이터베이스의 존재를 모르고 조립만 담당하도록 개선했다. 더불어 Repository가 직접 커밋을 호출하면 여러 작업을 하나의 원자적(Atomic) 트랜잭션으로 묶을 수 없다는 것을 깨닫고, Repository는 순수 SQL 실행만 담당하게 한 뒤 상위 Persister/Reader 계층에 트랜잭션 제어 책임을 위임함으로써 단일 책임 원칙을 지켰다.
-
-셋째, 프로그램의 복잡도가 높아질수록 **데이터의 흐름과 도메인 단위의 실제 의미를 정확히 파악해야 한다**는 점을 알게 되었다. 작성자인 내가 나의 코드의 흐름과 DB 참조 방식, 클래스의 사용여부를 확실히 이해하고 정확하게 설명할 수 있어야 한다는 점이 가장 중요하다. 이를 Code Editor 차원에서 내가 찾고자하는 부분을 빠르게 탐색하고, 참조되어있는 부분은 어디인지 등 이를 통해 전체 흐름을 파악하는 능력 또한 중요하다.
-
----
-
-### 4. 다음 프로젝트에서 개선할 점
-
-이번 프로젝트는 예상보다 훨씬 많은 시간과 고민이 필요했다. 중간에는 여러 번 설계를 수정해야 했고, 막히는 부분에서는 AI의 도움도 받았다. 하지만 단순히 코드를 가져오는 것이 아니라, 왜 그런 설계가 필요한지 이해하고 직접 리팩터링하며 내 것으로 만드는 데 집중했다.
-
-이번 경험을 통해 **처음 작성한 코드를 좋은 코드로 바꾸는 일은 생각보다 훨씬 많은 비용이 든다**는 것을 직접 체감했다. 결국 구현 전에 충분한 요구사항 분석과 도메인 모델링에 시간을 투자하는 것이 전체 개발 시간을 줄이는 가장 좋은 방법이라는 점을 배울 수 있었다.
-
-다음 프로젝트에서는 다음과 같은 점을 실천하고자 한다.
-
-* 구현보다 먼저 요구사항을 분석하고 도메인 모델을 충분히 설계하기
-* 경계값과 예외 상황을 포함한 테스트 케이스를 먼저 작성하기
-* 인수 테스트로 전체 흐름을 정의한 뒤 단위 테스트를 작성하기
-* 작은 단위의 의미 있는 Git 커밋을 꾸준히 남기기
-
-이번 과제는 단순히 하나의 프로젝트를 완성한 것이 아니라, TDD, 객체지향 설계와 DB 마이그레이션을 실제로 적용하며 시행착오를 경험한 과정이었다. 이번에 얻은 경험을 바탕으로 앞으로는 변경에 강하고 유지보수가 쉬운 소프트웨어를 설계하는 개발자가 되기 위해 꾸준히 개선해 나가고자 한다.
+Authentication, a web UI, security/data protection, and final integration are [post-internship roadmap items](../README.md#future-development-roadmap). The Phase 0 documentation work does not change business logic, database schemas, or API behavior.
