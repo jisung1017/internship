@@ -8,7 +8,7 @@
 
 Python · Domain Modeling · REST APIs · Data Integrity
 
-[Projects](#projects) · [What I Learned](#what-i-learned) · [Architecture](#system-architecture) · [Run Locally](#getting-started) · [Roadmap](#future-development-roadmap)
+[Projects](#projects) · [What I Learned](#what-i-learned) · [Feedback & Reflections](docs/FEEDBACK.md) · [Architecture](#system-architecture) · [Run Locally](#getting-started) · [Roadmap](#future-development-roadmap)
 
 </div>
 
@@ -67,6 +67,8 @@ A backend for configurable cafe orders, inventory, cancellation, and administrat
 ## What I Learned
 
 These lessons come from my internship notes and code reviews. The links point to changes and tests in the internship baseline.
+
+For the original context behind these changes, read how I interpreted the feedback, what I implemented, and what I would do differently. [Feedback & Reflections](docs/FEEDBACK.md)
 
 | Challenge | What I applied | What I learned |
 | --- | --- | --- |
@@ -143,6 +145,7 @@ internship/
 │   └── scripts/
 ├── example_2/              # Reference implementation, separate from featured work
 ├── assignment-template/   # Original assignment scaffold
+├── docs/                  # Feedback and reflections in English and Korean
 ├── .gitignore
 └── README.md
 ```
