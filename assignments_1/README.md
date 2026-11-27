@@ -1,167 +1,96 @@
-# ⚾ TDD 기반 숫자 야구 게임
+# Number Baseball Game
 
-## 🎯 목표
+![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white)
+![Pytest](https://img.shields.io/badge/Pytest-0A9EDC?style=flat-square&logo=pytest&logoColor=white)
+![Interface](https://img.shields.io/badge/Interface-CLI-555555?style=flat-square)
 
-TDD(Test Driven Development) 원칙을 적용하여 숫자 야구 게임을 구현한다.
+[Rules](#rules-and-features) · [Design](#design) · [Run](#getting-started) · [Retrospective](#retrospective)
 
-개발은 반드시 다음 순서를 따른다.
+A Python CLI guessing game developed during the internship. It demonstrates separation of console interaction, input validation, and game rules in a small, testable object-oriented program.
 
-> 🔴 Red → 🟢 Green → 🔵 Refactor
+The original implementation is preserved at [v1.0.0-internship](https://github.com/jisung1017/internship/tree/v1.0.0-internship/assignments_1). This documentation is part of the post-internship portfolio preparation.
 
-- 실패하는 테스트 작성
-- 테스트를 통과하는 최소한의 코드 작성
-- 리팩토링을 통해 코드 개선
+## Rules and Features
 
----
+- Guess three distinct digits from **1 to 9** in the correct order.
+- Enter digits separated by spaces, for example `1 2 3`.
+- A **strike** is a matching digit in the matching position; a **ball** is a matching digit in another position. No matching digits produces `OUT`.
+- The game allows seven valid guesses. Invalid input is retried within the current attempt.
+- Three strikes wins; exhausting seven guesses reveals the answer.
 
-## 📌 요구사항
+## Design
 
-- 컴퓨터가 생성한 **1~9 사이의 서로 다른 3자리 숫자** 맞추기
-- 스트라이크 / 볼 / 낫싱 판정
-- 최대 **7번**의 기회 제공
-- 잘못된 입력 예외 처리
-- 입력, 검증, 판정, 출력을 각각 독립적인 함수(또는 클래스)로 구현
-- 모든 기능을 **TDD 방식**으로 개발
+| Component | Responsibility |
+| --- | --- |
+| [`InputValidator`](number_baseball.py) | Checks length, digit range, and uniqueness |
+| [`ConsoleIO`](number_baseball.py) | Parses console input, retries invalid input, and prints results |
+| [`GameDomain`](number_baseball.py) | Calculates strikes and balls without console I/O |
+| [`main`](number_baseball.py) | Generates an answer and coordinates attempts and termination |
 
----
+```mermaid
+flowchart LR
+    MAIN[Game loop] --> IO[ConsoleIO]
+    IO --> VALIDATE[InputValidator]
+    MAIN --> DOMAIN[GameDomain]
+    DOMAIN --> RESULT[Strike / Ball / OUT]
+    RESULT --> IO
+```
 
-## 🚀 실행 방법
+The domain compares matching positions and intersects digit sets. With a fixed three-digit game, this is a readability choice; no measured performance improvement is claimed.
+
+## Getting Started
+
+The runtime uses only the Python standard library. The kiosk project targets Python 3.14; this game has no separate Python version or dependency manifest.
 
 ```bash
+cd assignments_1
 python number_baseball.py
 ```
 
-## ✅ 테스트 실행
+To test with uv and an isolated pytest dependency:
 
 ```bash
-pytest -vv
+uv run --no-project --with pytest python -m pytest test_baseball.py -q
 ```
 
----
+Alternatively, install pytest in your own virtual environment and run `python -m pytest test_baseball.py -q` from this directory.
 
-# 📂 프로젝트 구조
+## Testing Strategy
 
-| 클래스 | 역할 |
-|---------|------|
-| `ConsoleIO` | 사용자 입력 및 출력 |
-| `InputValidator` | 입력 검증 |
-| `GameDomain` | 게임 판정(Strike / Ball / Nothing) |
+[`test_baseball.py`](test_baseball.py) covers validation errors, strike/ball combinations, invalid-input retries, attempt prompts, early wins, and defeat after seven attempts. Console input and random answer generation are patched so game-flow tests are deterministic. Parameterized invariant checks verify the relationship between strike/ball counts and matching digits; these do not use a property-testing library.
 
----
+Use the explicit test file above to test the main implementation. [`example/`](example/) contains a separate reference implementation and its own tests; it is not included in claims about the main game's implementation.
 
-# 🏗️ 구현 내용
+## Retrospective
 
-## 1. 문제 해결 방식
+### What Changed in My Thinking
 
-숫자 야구 게임의 규칙을 분석한 후,
+I caught myself writing `main()` first, as I would for an algorithm exercise. My first pass focused on scoring valid guesses. TDD gave me a way to start from a specific behavior, such as what should happen when the player enters a letter, repeats a digit, or runs out of guesses.
 
-- 입력
-- 입력 검증
-- 게임 판정
-- 출력
+Pull request comments on my second iteration gave me concrete changes to work through. As I refactored, I began forming a rule for my own commits: finish and check one meaningful change, then write a message that helps a reviewer understand it.
 
-의 책임을 각각 분리하였다.
+### Lessons Applied in the Implementation
 
-또한 각 기능을 독립적으로 테스트할 수 있도록 설계하여 테스트 용이성을 높였다.
+| Challenge | Applied response | Evidence |
+| --- | --- | --- |
+| Input parsing and validation had overlapping responsibilities | Extract `InputValidator` from console interaction | [Separation commit](https://github.com/jisung1017/internship/commit/e3a17a2) · [Current source](number_baseball.py) |
+| The first pass focused on scoring valid guesses | Added cases for noninteger input, wrong length, duplicate digits, retries, early wins, and seven-attempt defeat | [Game-flow and validation tests](test_baseball.py) |
+| Random answers made scenarios harder to reproduce | Patch answer generation and console input in tests | [Deterministic tests](test_baseball.py) |
 
-게임 종료 조건(승리/패배)과 입력 예외 처리까지 포함하여 전체 게임 흐름을 구현하였다.
+The responsibility split is present, but the game loop still repeats validation after `ConsoleIO` validates input. This remains a small cleanup opportunity rather than a completed refactoring.
 
----
+### What I Want to Carry Forward
 
-## 2. 클래스 구성
+- Write small tests with names that explain one behavior.
+- Consider malformed input and boundary cases before the implementation.
+- Start each new behavior with a failing test and make time for refactoring once it passes.
+- Commit one meaningful change after checking that it works. Write the message for someone reviewing it later.
 
-### ConsoleIO
+## Known Limitations
 
-- 사용자 입력
-- 결과 출력
-- 게임 진행
+- CLI only; no persistence, score history, or web interface.
+- Input/output messages mix Korean and English.
+- Validation is repeated in the game loop after console validation.
+- `GameDomain` expects already validated guesses; its constructor does not enforce the input contract.
 
-### InputValidator
-
-입력 검증 담당
-
-- 정수 여부
-- 자리 수 확인
-- 숫자 범위
-- 중복 여부
-
-### GameDomain
-
-게임 판정 담당
-
-- Strike
-- Ball
-- Nothing
-
-또한 `set()`을 활용하여 탐색 시간을 개선하였다.
-
----
-
-# 🧪 TDD 적용 과정
-
-개발은 다음 순서로 진행하였다.
-
-1. 입력 검증 테스트 작성
-2. 실패하는 테스트(Red)
-3. 최소 구현(Green)
-4. 리팩토링(Refactor)
-5. 게임 판정 테스트 작성
-6. 승리/패배 테스트 작성
-7. 통합 테스트 작성
-8. `decision()` 함수의 Property Test 작성
-
----
-
-# ✅ 테스트 전략
-
-테스트는 다음 원칙을 기준으로 작성하였다.
-
-- 하나의 테스트는 하나의 동작만 검증한다.
-- 테스트 이름만 보고도 의도를 이해할 수 있어야 한다.
-- Given은 최대한 읽기 쉽게 작성한다.
-- 정상 입력보다 실패 입력을 더 많이 고려한다.
-- 시나리오보다 도메인 규칙 중심으로 테스트를 작성한다.
-
----
-
-# ♻️ 리팩토링
-
-다음 사항을 중심으로 코드를 개선하였다.
-
-- 입력과 검증의 책임 분리
-- 클래스별 단일 책임(SRP) 적용
-- 테스트하기 쉬운 구조로 개선
-- `set()`을 이용한 탐색 성능 개선
-- 출력 결과 가독성 향상
-
----
-
-# 💡 회고
-
-이번 과제를 진행하며 **TDD가 단순히 테스트를 먼저 작성하는 개발 방식이 아니라, 설계를 이끌어가는 개발 방법**이라는 점을 배웠다.
-
-처음에는 알고리즘 문제를 풀듯 정답만 출력하는 코드에 집중했지만, 실제 개발에서는 사용자가 항상 올바른 입력만 하는 것이 아니라는 점을 고려해야 한다는 것을 깨달았다.
-
-그래서 정상적인 입력보다 **잘못된 입력과 예외 상황을 먼저 고민하는 습관**이 중요하다는 것을 느꼈다.
-
-또한 좋은 테스트는 하나의 기능만 검증해야 하며, 테스트 이름만 보아도 어떤 기능을 검증하는지 이해할 수 있어야 한다는 점도 배울 수 있었다.
-
-TDD는 처음부터 고려해야 할 요소가 많아 개발 속도가 느리게 느껴질 수도 있지만, 테스트 코드가 충분히 준비되어 있다면 이후의 리팩토링과 유지보수는 훨씬 안정적으로 진행할 수 있다는 점을 경험했다.
-
-이번 과제를 통해 Git 사용 방법도 함께 익힐 수 있었다.
-
-- Branch 전략
-- Commit 작성
-- Pull Request
-- Code Review
-- 리뷰 반영 후 리팩토링
-
-등 실제 협업 과정을 경험하면서 Git Flow와 GitHub Flow에 대해서도 공부할 수 있었다.
-
-### 📖 다음 과제 목표
-
-- 처음부터 TDD 사이클(Red → Green → Refactor)을 철저히 적용하기
-- 더 작은 단위의 테스트 작성하기
-- 의미 있는 작은 Commit 남기기
-- Commit만 보아도 개발자의 의도를 이해할 수 있도록 작성하기
-- 유지보수하기 쉬운 코드를 작성하기
+These are properties of the preserved internship implementation. No gameplay behavior was changed during portfolio preparation.
