@@ -1,6 +1,46 @@
+# Python environments and caches
 .venv/
+venv/
 .uv-cache/
 .uv-python/
 .python-version.bak
 __pycache__/
 *.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Test and coverage output
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+junit.xml
+
+# Local environment and private credentials
+.env
+.env.*
+!.env.example
+!.env.sample
+*.key
+*.p12
+*.pfx
+
+# Editor and OS files (ignore rules do not untrack existing files)
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Runtime output and local databases
+*.log
+*.sqlite
+*.sqlite3
